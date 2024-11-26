@@ -73,14 +73,14 @@ const AppConfig = (props: AppConfigProps) => {
                             <Button icon="pi pi-minus" type="button" onClick={decrementScale} rounded text className="w-2rem h-2rem mr-2" disabled={layoutConfig.scale === scales[0]}></Button>
                             <div className="flex gap-2 align-items-center">
                                 {scales.map((item) => {
-                                    return <i className={classNames('pi pi-circle-fill', { 'text-primary-500': item === layoutConfig.scale, 'text-300': item !== layoutConfig.scale })} key={item}></i>;
+                                    return <i className={classNames('pi pi-circle-fill', { 'text-primary-color': item === layoutConfig.scale, 'text-300': item !== layoutConfig.scale })} key={item}></i>;
                                 })}
                             </div>
                             <Button icon="pi pi-plus" type="button" onClick={incrementScale} rounded text className="w-2rem h-2rem ml-2" disabled={layoutConfig.scale === scales[scales.length - 1]}></Button>
                         </div>
                     </>
                 )}
-                <h5>PrimeOne Design</h5>
+                <h5>Mode</h5>
                 <div className="grid">
                     <div className="col-3">
                         <button className="p-link w-2rem h-2rem" onClick={() => _changeTheme('lara-light-blue', 'light')}>

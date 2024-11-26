@@ -2,27 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-const { Neurosity } = require('@neurosity/sdk');
+import { useNotion } from '@/demo/service/NotionService';
 
 const DashboardPage = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
+  const { user, loadingUser } = useNotion();
 
   useEffect(() => {
-    // Verificar si el usuario está autenticado en localStorage
-    const authStatus = localStorage.getItem('isAuthenticated');
-
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-      router.push('/home'); // Redirige a la página de inicio si está autenticado
-    } else {
-      setIsAuthenticated(false);
-      router.push('/login'); // Redirige a la página de login si no está autenticado
+    if (!loadingUser && !user) {
+      router.push('/login'); // Redirige a la página de inicio si está autenticado
     }
-  }, []);
+    if (loadingUser || user) {
+      router.push('/home'); // Redirige a la página de inicio si está autenticado
+    }
+  }, [user, loadingUser]);
 
-  return null; // No se muestra contenido mientras se redirige
 };
 
 export default DashboardPage;

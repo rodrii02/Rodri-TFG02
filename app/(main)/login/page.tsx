@@ -1,73 +1,60 @@
 // app/login/page.tsx
 'use client';
+import 'regenerator-runtime/runtime';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { InputText } from "primereact/inputtext";
 import { Button } from 'primereact/button';
 import { useMessage } from '@/layout/context/messagecontext';
-import { Neurosity } from "@neurosity/sdk";
+import { notion, useNotion } from '@/demo/service/NotionService';
 
 const LoginPage = () => {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
   const { showMessage } = useMessage();
+  const { user, loadingUser } = useNotion();
 
-  // Asegúrate de inicializar neurosity con deviceId
-  const neurosity = new Neurosity({});
-
-
-  const main = async () => {
-    await neurosity
-      .login({
-        email,
-        password
-      })
-      .catch((error) => {
-        console.log(error);
-        throw new Error(error);
-      });
-    console.log("Logged in");
-  };  
-  // Función para manejar el login
-  const login = async () => {
+  useEffect(() => {
+    if (loadingUser || user) {
+      router.push('/home'); // Redirige a la página de inicio si está autenticado
+    }
+  })
+  
+  // Función de login para manejar el inicio de sesión en el envío del formulario
+  const login = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
     try {
-      console.log("Iniciando sesión con", email, password);
-      await neurosity.login({ email, password });
-      
-      // Si no lanza error, mostramos mensaje de éxito y redirigimos
-      showMessage({
-        severity: 'success',
-        summary: 'Login Exitoso',
-        detail: 'Inicio de sesión completado.',
-        life: 2000
-      });
-      localStorage.setItem('isAuthenticated', 'true');
-      router.push('/home');
+      const auth = await notion
+        .login({ email, password })
+          showMessage({
+            severity: 'success',
+            summary: 'Inicio de sesión exitoso',
+            detail: 'Redirigiendo...',
+            life: 2000
+          });
+        router.push('/home');
+        setIsLoggingIn(false)
     } catch (error) {
-      // Si la autenticación falla
-      console.error("Error en la autenticación:", error);
       showMessage({
         severity: 'error',
-        summary: 'Error de Autenticación',
-        detail: 'Por favor, verifica tus credenciales.',
-        life: 4000
+        summary: 'Error al iniciar sesion',
+        detail: 'Redirigiendo...',
+        life: 2000
       });
     }
-  };
 
-  // Manejador del formulario
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    login();
   };
+  
 
   return (
     <div className='flex h-screen w-screen justify-content-center align-items-center'>
       <div className="card flex flex-column gap-4 w-8 h-8 justify-content-center align-items-center">
         <h2>Iniciar Sesión</h2>
-        <form className='flex flex-column gap-2'>
+        <form onSubmit={login} className='flex flex-column gap-2'>
           <div className="flex flex-column gap-2">
             <label htmlFor="username">Username</label>
             <InputText
@@ -87,7 +74,7 @@ const LoginPage = () => {
             />
           </div>
           <div className="flex flex-column gap-2">
-            <Button type="submit" label="Iniciar sesión" onClick={main}/>
+            <Button type="submit" label="Iniciar sesión" disabled={isLoggingIn} loading={isLoggingIn}/>
           </div>
         </form>
       </div>

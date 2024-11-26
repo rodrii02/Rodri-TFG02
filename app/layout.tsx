@@ -7,6 +7,9 @@ import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import '../styles/layout/layout.scss';
 import { MessageProvider } from '@/layout/context/messagecontext';
+import { ProvideNotion } from '@/demo/service/NotionService';
+import 'regenerator-runtime/runtime';
+
 
 interface RootLayoutProps {
     children: React.ReactNode;
@@ -22,7 +25,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <PrimeReactProvider>
                     <LayoutProvider>
                         <MessageProvider>
+                        <ProvideNotion>
                             {children}
+                        </ProvideNotion>
                         </MessageProvider>
                     </LayoutProvider>
                 </PrimeReactProvider>
