@@ -37,9 +37,18 @@ export function ProvideNotion({ children }: any) {
 // Hook que gestiona la lógica del contexto de Notion y proporciona el estado y las funciones
 function useProvideNotion() {
   // Estado para almacenar el ID del último dispositivo seleccionado en localStorage, o `null` si no hay ninguno
-  const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(
-    localStorage.getItem("deviceId")
-  );
+  // const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(
+  //   localStorage.getItem("deviceId")
+  // );
+
+  const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedDeviceId = localStorage.getItem("deviceId");
+      setLastSelectedDeviceId(storedDeviceId);
+    }
+  }, []);
 
   // Estado para almacenar el estado actual del contexto de Notion
   const [state, setState] = useState({
@@ -106,14 +115,19 @@ function useProvideNotion() {
   // Efecto para manejar el cambio de dispositivos y actualizar `selectedDevice` y `lastSelectedDeviceId`
   useEffect(() => {
     const sub = notion.onDeviceChange().subscribe((selectedDevice) => {
-      setSelectedDevice(selectedDevice); // Actualiza el dispositivo seleccionado en el estado
-      setLastSelectedDeviceId(selectedDevice.deviceId); // Guarda el ID del dispositivo en localStorage
+      setSelectedDevice(selectedDevice);
+  
+      if (typeof window !== "undefined") {
+        localStorage.setItem("deviceId", selectedDevice.deviceId);
+        setLastSelectedDeviceId(selectedDevice.deviceId);
+      }
     });
-
+  
     return () => {
-      sub.unsubscribe(); // Cancela la suscripción cuando el componente se desmonta
+      sub.unsubscribe();
     };
-  }, [setSelectedDevice, setLastSelectedDeviceId]);
+  }, [setSelectedDevice]);
+  
 
   // Función para cerrar sesión en Notion y restablecer el estado de Notion al estado inicial
   const logoutNotion = useCallback(() => {
