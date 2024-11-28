@@ -1,24 +1,30 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+# NEURO FEEDBACK APP
 
-First, run the development server:
+
+
+## Instalacion
+
+
+
+Para usar la aplicación hay que instalar [NodeJs](https://nodejs.org/en/download/prebuilt-installer/current).
+
+
+
+Una vez descargado el repositorio hacemos
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+  npm i
+```
+Despues podemos lanzar la aplicacion de dos formas:
+
+La primera construir una versión optimizada de la aplicación para producción. Para ver que la aplicación funciona correctamente en un entorno de producción.
+```bash
+  npm run build
+  npm run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
--   [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
--   [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+La segundo es ideal para trabajar en tiempo real en la aplicación 
+```bash
+  npm run dev
+```
