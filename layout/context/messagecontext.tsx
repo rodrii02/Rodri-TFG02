@@ -1,4 +1,6 @@
 // context/MessageContext.tsx
+'use client'
+
 import React, { createContext, useContext, useRef } from 'react';
 import { Toast } from 'primereact/toast';
 

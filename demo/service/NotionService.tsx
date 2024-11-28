@@ -1,3 +1,4 @@
+'use client'
 import React, { useContext, createContext } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { Notion } from "@neurosity/notion";

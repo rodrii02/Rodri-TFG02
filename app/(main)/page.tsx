@@ -9,6 +9,14 @@ const DashboardPage = () => {
   const { user, loadingUser } = useNotion();
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const { Notion } = require("@neurosity/notion");
+      const notion = new Notion({ autoSelectDevice: false });
+      console.log("Notion initialized:", notion);
+    }
+  }, []);
+  
+  useEffect(() => {
     if (!loadingUser && !user) {
       router.push('/login'); // Redirige a la página de inicio si está autenticado
     }
