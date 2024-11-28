@@ -8,8 +8,8 @@ export const LayoutProvider = ({ children }: ChildContainerProps) => {
         ripple: false,
         inputStyle: 'outlined',
         menuMode: 'static',
-        colorScheme: 'dark',
-        theme: 'lara-dark-blue',
+        colorScheme: 'light',
+        theme: 'lara-light-blue',
         scale: 14
     });
 
