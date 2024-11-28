@@ -9,7 +9,7 @@ interface AppLayoutProps {
 export const metadata: Metadata = {
     title: 'Proyecto de Neurofeedback',
     description: 'Desarrollo de una plataforma de neurofeedback para modular la actividad cerebral en tiempo real mediante electroencefalografía no invasiva.',
-    robots: { index: true, follow: true },
+    robots: { index: false, follow: false },
     viewport: { initialScale: 1, width: 'device-width' },
     openGraph: {
         type: 'website',
