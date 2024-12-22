@@ -1,0 +1,13 @@
+.image {
+    max-width: 65%; /* Ancho predeterminado */
+    height: auto;
+    transition: max-width 0.5s ease; /* Transición suave */
+
+    /* Media Query: cuando el ancho de pantalla es menor o igual a 600px */
+    @media (max-width: 600px) {
+        max-width: 100%; /* Ajusta el ancho */
+    }
+    @media (max-width: 768px) {
+        max-width: 90%; /* Ajusta el ancho */
+    }
+}

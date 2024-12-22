@@ -8,6 +8,7 @@ import '../styles/layout/layout.scss';
 import { MessageProvider } from '@/layout/context/messagecontext';
 import { ProvideNotion } from '@/demo/service/NotionService';
 import 'regenerator-runtime/runtime';
+import { DeviceDialogProvider } from '@/layout/context/devicecontext';
 
 
 interface RootLayoutProps {
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     <LayoutProvider>
                         <MessageProvider>
                         <ProvideNotion>
-                            {children}
+                            <DeviceDialogProvider>{children}</DeviceDialogProvider>
                         </ProvideNotion>
                         </MessageProvider>
                     </LayoutProvider>

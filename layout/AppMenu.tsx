@@ -22,6 +22,32 @@ const AppMenu = () => {
                 { label: 'Chart', icon: 'pi pi-fw pi-chart-bar', to: '/home/ui/charts' },
             ]
         },
+        {
+            label: 'Neurofeedback',
+            icon: 'pi pi-fw pi-user',
+            items: [
+                {
+                    label: 'Imagen',
+                    icon: 'pi pi-fw pi-image',
+                    to: '/home/ui/neurofeedback/imagen'
+                },
+                {
+                    label: 'Video',
+                    icon: 'pi pi-fw pi-video',
+                    to: '/home/ui/neurofeedback/video'
+                },
+                {
+                    label: 'Audio',
+                    icon: 'pi pi-fw pi-headphones',
+                    to: '/auth/access'
+                },
+                {
+                    label: 'Juego bola',
+                    icon: 'pi pi-fw pi-circle-fill',
+                    to: '/auth/access'
+                }
+            ]
+        }
     ];
 
     return (

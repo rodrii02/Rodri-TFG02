@@ -1,49 +1,52 @@
-'use client'
+'use client'; // Indica que este archivo se ejecuta del lado del cliente en Next.js
+
 import React, { useContext, createContext } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { Notion } from "@neurosity/notion";
 
 // Crea una nueva instancia del SDK de Notion para interactuar con el dispositivo Neurosity Crown
 export const notion = new Notion({
-  autoSelectDevice: false // Desactiva la selección automática de dispositivos; la selección se realizará manualmente
+  autoSelectDevice: false // Desactiva la selección automática de dispositivos; la selección será manual
 });
 
 // Define el estado inicial para el contexto de Notion
 const initialState = {
-  selectedDevice: null, // Almacena el dispositivo actualmente seleccionado
-  status: null,          // Almacena el estado actual del dispositivo
-  user: null,            // Almacena el usuario autenticado
-  loadingUser: true      // Indica si la carga de autenticación del usuario está en progreso
+  selectedDevice: null, // Dispositivo actualmente seleccionado
+  status: null,         // Estado del dispositivo (conectado, desconectado, etc.)
+  user: null,           // Información del usuario autenticado
+  loadingUser: true     // Indica si el proceso de carga de autenticación del usuario está en progreso
 };
 
-// Crea un contexto para gestionar y compartir el estado relacionado con Notion en todos los componentes
+// Crea un contexto para compartir el estado de Notion en toda la aplicación
 export const NotionContext = createContext<any>(null);
 
-// Hook para acceder a NotionContext en otros componentes
+// Hook personalizado para acceder al contexto de Notion desde otros componentes
 export const useNotion = () => {
-  return useContext(NotionContext);
+  return useContext(NotionContext); // Retorna el valor actual del contexto
 };
 
-// Componente proveedor que envuelve a sus hijos con NotionContext y les proporciona su estado y funciones
-export function ProvideNotion({ children }: any) {
-  const notionProvider = useProvideNotion(); // Llama a `useProvideNotion` para obtener el estado y las funciones de Notion
+// Proveedor del contexto que envuelve a los componentes hijos y proporciona el estado y funciones de Notion
+export const ProvideNotion = ({ children }: any) => {
+  const notionProvider = useProvideNotion(); // Obtiene el estado y las funciones de Notion
 
   return (
     <NotionContext.Provider value={notionProvider}>
-      {children}
+      {children} {/* Proporciona el contexto a los componentes hijos */}
     </NotionContext.Provider>
   );
-}
+};
 
-// Hook que gestiona la lógica del contexto de Notion y proporciona el estado y las funciones
+// Hook que encapsula la lógica del contexto de Notion
 function useProvideNotion() {
-  // Estado para almacenar el ID del último dispositivo seleccionado en localStorage, o `null` si no hay ninguno
-  // const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(
-  //   localStorage.getItem("deviceId")
-  // );
+  // Recupera el último dispositivo seleccionado del localStorage al cargar la página
+  const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("deviceId"); // Intenta recuperar el ID del dispositivo almacenado
+    }
+    return null; // Retorna null si no hay ventana disponible (servidor)
+  });
 
-  const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(null);
-
+  // Efecto para inicializar el ID del dispositivo seleccionado desde el localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedDeviceId = localStorage.getItem("deviceId");
@@ -51,15 +54,14 @@ function useProvideNotion() {
     }
   }, []);
 
-  // Estado para almacenar el estado actual del contexto de Notion
+  // Estado general del contexto, inicializado con el estado inicial
   const [state, setState] = useState({
     ...initialState // Copia el estado inicial
   });
 
-  // Extrae `user` y `selectedDevice` del estado actual para un fácil acceso
-  const { user, selectedDevice } = state;
+  const { user, selectedDevice } = state; // Extrae `user` y `selectedDevice` del estado
 
-  // Función para actualizar el dispositivo seleccionado en el estado de Notion
+  // Función para establecer el dispositivo seleccionado
   const setSelectedDevice = useCallback((selectedDevice: any) => {
     setState((state) => ({
       ...state,
@@ -67,83 +69,79 @@ function useProvideNotion() {
     }));
   }, []);
 
-  // Efecto para seleccionar un dispositivo automáticamente si hay un usuario autenticado y no hay un dispositivo seleccionado
+  // Selecciona un dispositivo cuando el usuario está autenticado y no hay uno seleccionado
   useEffect(() => {
     if (user && !selectedDevice) {
-        notion.selectDevice((devices: any[]) => {
-            console.log("Ultimo dispositivo:", lastSelectedDeviceId);
-            return lastSelectedDeviceId
-                ? devices.find((device: any) => device.deviceId === lastSelectedDeviceId)
-                : devices[0] as string; // Selecciona el primer dispositivo si no hay un `lastSelectedDeviceId`
-        });
+      notion.selectDevice((devices: any[]) => {
+        console.log("Último dispositivo:", lastSelectedDeviceId);
+        return lastSelectedDeviceId
+          ? devices.find((device: any) => device.deviceId === lastSelectedDeviceId) // Selecciona el último dispositivo si está disponible
+          : devices[0]; // Selecciona el primer dispositivo disponible
+      });
     }
   }, [user, lastSelectedDeviceId, selectedDevice]);
 
-  // Efecto para suscribirse al estado del dispositivo seleccionado y actualizar `status` en el estado de Notion
+  // Se suscribe al estado del dispositivo seleccionado y actualiza el estado global
   useEffect(() => {
-    if (!selectedDevice) {
-      return; // Si no hay dispositivo seleccionado, no hace nada
-    }
+    if (!selectedDevice) return;
 
     const subscription = notion.status().subscribe((status) => {
-      setState((state: any) => ({ ...state, status }));
+      setState((state: any) => ({ ...state, status })); // Actualiza el estado del dispositivo
     });
 
     return () => {
-      subscription.unsubscribe(); // Cancela la suscripción cuando el dispositivo cambia o el componente se desmonta
+      subscription.unsubscribe(); // Limpia la suscripción cuando cambia el dispositivo
     };
   }, [selectedDevice]);
 
-  // Efecto para monitorear el estado de autenticación del usuario y actualizar `user` en el estado de Notion
+  // Maneja los cambios en la autenticación del usuario
   useEffect(() => {
     setState((state) => ({ ...state, loadingUser: true }));
 
-    const subscription = notion
-      .onAuthStateChanged()
-      .subscribe((user) => {
-        setState((state) => ({
-          ...state,
-          user,
-          loadingUser: false
-        }));
-      });
+    const subscription = notion.onAuthStateChanged().subscribe((user) => {
+      setState((state) => ({
+        ...state,
+        user, // Actualiza el usuario autenticado
+        loadingUser: false
+      }));
+    });
 
     return () => {
-      subscription.unsubscribe(); // Cancela la suscripción cuando el componente se desmonta
+      subscription.unsubscribe(); // Limpia la suscripción al desmontar
     };
   }, []);
 
-  // Efecto para manejar el cambio de dispositivos y actualizar `selectedDevice` y `lastSelectedDeviceId`
+  // Maneja cambios en el dispositivo seleccionado
   useEffect(() => {
     const sub = notion.onDeviceChange().subscribe((selectedDevice) => {
       setSelectedDevice(selectedDevice);
-  
+
       if (typeof window !== "undefined") {
-        localStorage.setItem("deviceId", selectedDevice.deviceId);
+        localStorage.setItem("deviceId", selectedDevice.deviceId); // Guarda el ID del dispositivo en localStorage
         setLastSelectedDeviceId(selectedDevice.deviceId);
       }
     });
-  
+
     return () => {
-      sub.unsubscribe();
+      sub.unsubscribe(); // Limpia la suscripción al desmontar
     };
   }, [setSelectedDevice]);
-  
 
-  // Función para cerrar sesión en Notion y restablecer el estado de Notion al estado inicial
+  // Función para cerrar sesión en Notion
   const logoutNotion = useCallback(() => {
-    return new Promise((resolve) => {
-      notion.logout().then(resolve); // Llama a `logout` y luego resuelve la promesa
-      setState({ ...initialState, loadingUser: false }); // Restablece el estado al inicial
+    return new Promise<void>((resolve) => {
+      notion.logout().then(resolve); // Llama al método de logout del SDK
+      setState({ ...initialState, loadingUser: false }); // Reinicia el estado a su valor inicial
     });
   }, []);
 
-  // Retorna el estado y las funciones necesarias para manejar Notion a través del contexto
+  // Retorna el estado y las funciones que estarán disponibles a través del contexto
   return {
-    ...state,                // Retorna el estado de Notion (user, status, selectedDevice, etc.)
-    lastSelectedDeviceId,    // Retorna el ID del último dispositivo seleccionado
-    setLastSelectedDeviceId, // Función para actualizar el ID del último dispositivo en localStorage
-    logoutNotion,            // Función para cerrar sesión en Notion
-    setSelectedDevice        // Función para actualizar el dispositivo seleccionado
+    ...state, // Incluye el estado actual
+    notion, // Proporciona la instancia de Notion
+    lastSelectedDeviceId, // ID del último dispositivo seleccionado
+    setLastSelectedDeviceId, // Función para actualizar el ID del último dispositivo seleccionado
+    logoutNotion, // Función para cerrar sesión
+    setSelectedDevice // Función para establecer un dispositivo seleccionado
   };
 }

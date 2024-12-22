@@ -1,21 +1,23 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import { classNames } from 'primereact/utils';
-import React, { forwardRef, useContext, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useContext, useEffect, useImperativeHandle, useRef } from 'react';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import { Tooltip } from 'primereact/tooltip'; // Importamos el Tooltip
 import { AppTopbarRef } from '@/types';
 import { LayoutContext } from './context/layoutcontext';
 import { useNotion } from '@/demo/service/NotionService';
 import { useRouter } from 'next/navigation';
+import { useDeviceDialog } from './context/devicecontext';
 
 const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
     const { layoutConfig, layoutState, onMenuToggle, showProfileSidebar } = useContext(LayoutContext);
     const menubuttonRef = useRef(null);
     const topbarmenuRef = useRef(null);
     const topbarmenubuttonRef = useRef(null);
-    const { logoutNotion, status, selectedDevice } = useNotion(); // Obtener el estado del dispositivo
+    const { logoutNotion, status, selectedDevice, notion } = useNotion(); // Obtener el estado del dispositivo
     const overlayPanelRef = useRef<OverlayPanel>(null); // Referencia para el OverlayPanel
+    const { showDeviceDialog } = useDeviceDialog();
     const router = useRouter();
 
     const { state, charging, battery } = status || {};
@@ -94,7 +96,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
                     </div>
                 </OverlayPanel>
 
-                <button type="button" className="p-link layout-topbar-button">
+                <button type="button" className="p-link layout-topbar-button" onClick={showDeviceDialog}>
                     <i className="pi pi-cog"></i>
                     <span>Info</span>
                 </button>
