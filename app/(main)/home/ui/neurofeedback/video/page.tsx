@@ -55,7 +55,7 @@ const ImagePage = () => {
                         filter: `blur(${blurLevel}px)`, // Aplica el desenfoque dinámico
                         transition: 'filter 0.5s ease, max-width 0.5s ease', // Transición suave
                         overflow: 'hidden',
-                        borderRadius: '10px', // Opcional: Bordes redondeados
+                        borderRadius: '10px',
                     }}
                 >
                     <iframe
