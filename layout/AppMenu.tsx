@@ -39,7 +39,7 @@ const AppMenu = () => {
                 {
                     label: 'Audio',
                     icon: 'pi pi-fw pi-headphones',
-                    to: '/auth/access'
+                    to: '/home/ui/neurofeedback/audio'
                 },
                 {
                     label: 'Juego bola',
