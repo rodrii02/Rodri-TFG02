@@ -1,181 +1,301 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useWavesurfer } from '@wavesurfer/react'
 import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.js'
 import { Button } from 'primereact/button'
-import WaveSurfer from 'wavesurfer.js'
+import { Tooltip } from 'primereact/tooltip';
+import { ColorPicker } from 'primereact/colorpicker'
+import { OverlayPanel } from 'primereact/overlaypanel'
+        
 
 const audioUrls = ['/layout/audio/OneRepublic_I_Aint_Worried.mp3']
 
-const formatTime = (seconds: any) =>
-  [seconds / 60, seconds % 60]
-    .map((v) => `0${Math.floor(v)}`.slice(-2))
-    .join(':')
-
 const Audiopage = () => {
-  const containerRef = useRef<HTMLDivElement | null>(null) // Contenedor de WaveSurfer principal
-  const noiseContainerRef = useRef<HTMLDivElement | null>(null) // Contenedor para el ruido
-  const [urlIndex, setUrlIndex] = useState(0) // Índice de la canción actual
-  const [addNoise, setAddNoise] = useState(false) // Estado que controla si el ruido está activo
-  const primaryColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--primary-color')
-    .trim()
-    const secondColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--second-color')
-    .trim()
-  const noiseColor = 'rgba(255, 0, 0, 0.3)' // Color del ruido
+  const op = useRef<OverlayPanel>(null); // Referencia para el OverlayPanel
+  const [colorRuido, setColorRuido] = useState({ r: 151, g: 18, b: 47 });
+  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim()
+  const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim()
 
-  const { wavesurfer, isPlaying, currentTime } = useWavesurfer({
-    container: containerRef, // Contenedor para el WaveSurfer principal
-    height: 150, // Altura de la onda
-    waveColor: primaryColor, // Color de la onda principal
-    progressColor: secondColor, // Color del progreso
-    url: audioUrls[urlIndex], // URL del archivo de audio principal
-    plugins: useMemo(() => [TimelinePlugin.create()], []), // Plugin de línea de tiempo
+  // Referencia para almacenar el contenedor donde se renderizará Wavesurfer
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  // Referencia para almacenar el canvas donde se dibujará el espectrograma
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Estado para controlar si el audio está en reproducción o en pausa
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  // Estado para activar o desactivar la adición de ruido blanco al audio
+  const [addNoise, setAddNoise] = useState(false)
+
+  // Estado que almacena el nivel de ruido blanco que se aplicará al audio
+  const [noiseLevel, setNoiseLevel] = useState(0.1)
+
+  // Inicializamos Wavesurfer con las configuraciones necesarias
+  const { wavesurfer } = useWavesurfer({
+    container: containerRef, // Referencia al contenedor donde se renderizará Wavesurfer
+    height: 150, // Altura de la onda de audio
+    waveColor: secondColor, // Color de la onda de audio
+    progressColor: primaryColor, // Color de la parte reproducida de la onda
+    url: audioUrls[0], // URL del archivo de audio que se cargará
+    plugins: useMemo(() => [TimelinePlugin.create()], []), // Agregamos el plugin de línea de tiempo
   })
 
-  const noiseWaveSurferRef = useRef<WaveSurfer | null>(null) // Referencia al WaveSurfer del ruido
-  const audioContextRef = useRef<AudioContext | null>(null) // Referencia al AudioContext
-  const noiseGainRef = useRef<GainNode | null>(null) // Nodo Gain para controlar la intensidad del ruido
-  const noiseBufferRef = useRef<AudioBuffer | null>(null) // Buffer de ruido blanco
+  // Referencia para el contexto de audio, utilizado para manejar el procesamiento de audio
+  const audioContextRef = useRef<AudioContext | null>(null)
 
-  // Configura el AudioContext y genera el buffer de ruido
+  // Referencia para el nodo de ganancia, que controla el volumen del ruido blanco
+  const noiseGainRef = useRef<GainNode | null>(null)
+
+  // Referencia para la fuente de ruido blanco, que genera el sonido aleatorio
+  const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null)
+
+  // Referencia para el analizador de audio, que se usa para visualizar la onda del sonido en el canvas
+  const analyserAudioRef = useRef<AnalyserNode | null>(null)
+
+  // useEffect que se ejecuta cuando Wavesurfer está disponible
   useEffect(() => {
+    // Si Wavesurfer está listo y aún no hemos inicializado el contexto de audio
     if (wavesurfer && !audioContextRef.current) {
+      // Creamos un nuevo contexto de audio para manejar el procesamiento de sonido
       const audioContext = new AudioContext()
-      const mediaElement = wavesurfer.getMediaElement() // Elemento de audio principal
 
-      // Crea un nodo de fuente para el audio principal
+      // Obtenemos el elemento de audio desde Wavesurfer
+      const mediaElement = wavesurfer.getMediaElement()
+
+      // Creamos un nodo fuente de audio a partir del elemento de audio
       const audioSource = audioContext.createMediaElementSource(mediaElement)
 
-      // Crea un nodo Gain para controlar el volumen del audio
-      const gainNode = audioContext.createGain()
-      gainNode.gain.value = 1
+      // Creamos un analizador de audio para visualizar la señal de sonido
+      analyserAudioRef.current = audioContext.createAnalyser()
+      // 2048 es un buen balance entre precisión y rendimiento.
+      // Cuanto mayor es el valor, más detalle hay en las frecuencias, pero usa más CPU.
+      // Cuanto menor, más rápida es la respuesta, pero con menos detalle.
+      analyserAudioRef.current.fftSize = 2048 // Definimos la resolución del análisis FFT (Fast Fourier Transform)
 
-      // Conecta el audio al GainNode y al destino
-      audioSource.connect(gainNode)
-      gainNode.connect(audioContext.destination)
+      // Conectamos el nodo fuente al analizador de audio
+      audioSource.connect(analyserAudioRef.current)
 
-      // Configura el ruido
-      const noiseGain = audioContext.createGain()
-      noiseGain.gain.value = 0 // El ruido comienza desactivado
-      noiseGain.connect(audioContext.destination)
+      // Conectamos el analizador al destino final (parlantes o audífonos)
+      analyserAudioRef.current.connect(audioContext.destination)
 
+      // Creamos un nodo de ganancia para manejar el volumen del ruido blanco
+      noiseGainRef.current = audioContext.createGain()
+      noiseGainRef.current.gain.value = 0 // Inicialmente el ruido está apagado
+
+      // Conectamos el nodo de ganancia al destino final
+      noiseGainRef.current.connect(audioContext.destination)
+
+      // Guardamos la referencia del contexto de audio
       audioContextRef.current = audioContext
-      noiseGainRef.current = noiseGain
-
-      // Genera el buffer de ruido
-      const duration = mediaElement.duration || 10 // Duración predeterminada si no está disponible
-      const noiseBuffer = generateNoiseBuffer(audioContext, duration)
-      noiseBufferRef.current = noiseBuffer
-
-      // Configura WaveSurfer para el ruido
-      noiseWaveSurferRef.current = WaveSurfer.create({
-        container: noiseContainerRef.current!,
-        height: 150, // Altura igual a la del WaveSurfer principal
-        waveColor: noiseColor, // Color del ruido
-        progressColor: 'rgba(255, 0, 0, 0.8)', // Progreso del ruido
-      })
-
-      // Genera un archivo WAV para el ruido y lo carga en el WaveSurfer del ruido
-      const noiseUrl = generateNoiseFile(noiseBuffer, audioContext)
-      noiseWaveSurferRef.current.load(noiseUrl)
     }
-  }, [wavesurfer])
+  }, [wavesurfer]) // Se ejecuta cada vez que `wavesurfer` cambia
 
-  // Genera un buffer de ruido blanco
-  const generateNoiseBuffer = (audioContext: AudioContext, duration: number) => {
-    const bufferSize = audioContext.sampleRate * duration // Tamaño del buffer basado en la duración
+  // Función para generar ruido blanco y añadirlo al audio
+  const generateNoise = () => {
+    // Si el contexto de audio no está inicializado, salir de la función
+    if (!audioContextRef.current) return
+
+    // Obtener el contexto de audio
+    const audioContext = audioContextRef.current
+
+    // Si ya existe una fuente de ruido, detenerla antes de generar una nueva
+    if (noiseSourceRef.current) {
+      noiseSourceRef.current.stop() // Detiene la reproducción del ruido actual
+      noiseSourceRef.current.disconnect() // Desconecta el nodo del contexto de audio
+    }
+
+    // 📢 Asegurar que el nodo de ganancia (volumen) del ruido esté configurado correctamente
+    if (!noiseGainRef.current) {
+      noiseGainRef.current = audioContext.createGain() // Crear un nodo de ganancia
+      noiseGainRef.current.connect(audioContext.destination) // Conectarlo a la salida de audio
+    }
+
+    // 🔊 Ajustar el volumen del ruido blanco al nivel definido
+    noiseGainRef.current.gain.value = noiseLevel
+
+    // Determinar el tamaño del buffer para el ruido (2 segundos de duración)
+    const bufferSize = audioContext.sampleRate * 2
+
+    // Crear un buffer de audio con 1 canal, duración `bufferSize`, y la frecuencia de muestreo del contexto
     const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate)
+
+    // Obtener el canal de datos del buffer para llenarlo con ruido aleatorio
     const output = noiseBuffer.getChannelData(0)
 
-    // Llena el buffer con valores aleatorios entre -1 y 1
+    // 🎵 Generar ruido blanco aleatorio llenando el buffer con valores entre -1 y 1
     for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1
+      output[i] = (Math.random() * 2 - 1) * noiseLevel
     }
 
-    return noiseBuffer
+    // Crear una fuente de audio para reproducir el buffer de ruido
+    const noiseSource = audioContext.createBufferSource()
+    noiseSource.buffer = noiseBuffer // Asignar el buffer de ruido
+    noiseSource.loop = true // Hacer que el ruido se reproduzca en bucle
+
+    // Conectar la fuente de ruido al nodo de ganancia para controlar su volumen
+    noiseSource.connect(noiseGainRef.current)
+
+    // 📢 Iniciar la reproducción del ruido blanco
+    noiseSource.start()
+
+    // Guardar la referencia de la fuente de ruido para poder detenerla después si es necesario
+    noiseSourceRef.current = noiseSource
   }
 
-  // Genera un archivo WAV a partir del buffer de ruido
-  const generateNoiseFile = (buffer: AudioBuffer, audioContext: AudioContext) => {
-    const numOfChan = buffer.numberOfChannels
-    const length = buffer.length * numOfChan * 2 + 44
-    const bufferData = new ArrayBuffer(length)
-    const view = new DataView(bufferData)
+  // useEffect que dibuja la onda del audio en un canvas y agrega ruido blanco si está activado
+  useEffect(() => {
+    // Si el canvas o el analizador de audio no están disponibles, salir de la función
+    if (!canvasRef.current || !analyserAudioRef.current) return
 
-    // Encabezado WAV
-    writeWAVHeader(view, buffer)
+    // Obtener la referencia del canvas donde se dibujará la visualización
+    const canvas = canvasRef.current
 
-    // Datos PCM
-    let offset = 44
-    for (let i = 0; i < buffer.numberOfChannels; i++) {
-      const channel = buffer.getChannelData(i)
-      for (let j = 0; j < channel.length; j++, offset += 2) {
-        const sample = Math.max(-1, Math.min(1, channel[j]))
-        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true)
+    // Obtener el contexto 2D del canvas para poder dibujar
+    const ctx = canvas.getContext('2d')
+
+    // Si no se pudo obtener el contexto, salir de la función
+    if (!ctx) return
+
+    // Definir el tamaño del canvas
+    canvas.width = 600
+    canvas.height = 200
+
+    // Obtener la cantidad de datos que el analizador de audio va a devolver
+    const bufferLength = analyserAudioRef.current.frequencyBinCount
+
+    // Crear un array para almacenar los datos del dominio del tiempo (la forma de onda)
+    const dataArrayAudio = new Uint8Array(bufferLength)
+
+    // Función que dibuja la visualización en el canvas
+    const draw = () => {
+      // Llamar a esta función en el siguiente frame de animación para hacer que el dibujo sea dinámico
+      requestAnimationFrame(draw)
+
+      // Obtener los datos de la onda de audio en tiempo real
+      analyserAudioRef.current!.getByteTimeDomainData(dataArrayAudio)
+
+      // Limpiar el canvas y establecer el fondo en negro
+      ctx.fillStyle = 'white'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Determinar el ancho de cada segmento de la onda a dibujar
+      let sliceWidth = canvas.width / bufferLength
+      let x = 0
+
+      // Configurar el color y grosor de la línea de la onda de audio
+      ctx.lineWidth = 2
+      ctx.strokeStyle = primaryColor // Color verde
+      ctx.beginPath()
+
+      // Recorrer los datos del audio y dibujar la onda en el canvas
+      for (let i = 0; i < bufferLength; i++) {
+        // Normalizar los valores para ajustarlos al tamaño del canvas
+        let v = dataArrayAudio[i] / 255.0
+        let y = canvas.height - v * canvas.height
+
+        // Dibujar la línea de la onda
+        if (i === 0) {
+          ctx.moveTo(x, y)
+        } else {
+          ctx.lineTo(x, y)
+        }
+
+        x += sliceWidth
+      }
+
+      ctx.stroke() // Finalizar el dibujo de la onda de audio
+
+      // 🔹 Si el ruido blanco está activado, dibujarlo encima de la onda
+      if (addNoise) {
+        x = 0
+        ctx.strokeStyle = rgbToString(colorRuido) // Rojo con 50% de transparencia
+        ctx.beginPath()
+
+        for (let i = 0; i < bufferLength; i++) {
+          // Generar valores aleatorios para simular el ruido blanco
+          let randomNoise = (Math.random() * 2 - 1) * noiseLevel
+          let y = canvas.height - ((randomNoise + 1) / 2) * canvas.height
+
+          // Dibujar el ruido como una línea encima de la onda de audio
+          if (i === 0) {
+            ctx.moveTo(x, y)
+          } else {
+            ctx.lineTo(x, y)
+          }
+
+          x += sliceWidth
+        }
+
+        ctx.stroke() // Finalizar el dibujo del ruido blanco
       }
     }
 
-    return URL.createObjectURL(new Blob([bufferData], { type: 'audio/wav' }))
-  }
+    draw() // Iniciar la animación de la visualización
+  }, [addNoise, noiseLevel]) // Se vuelve a ejecutar cuando cambia `addNoise` o `noiseLevel`
 
-  const writeWAVHeader = (view: DataView, buffer: AudioBuffer) => {
-    const numOfChan = buffer.numberOfChannels
-    const length = buffer.length * numOfChan * 2 + 44
 
-    writeUTFBytes(view, 0, 'RIFF')
-    view.setUint32(4, length - 8, true)
-    writeUTFBytes(view, 8, 'WAVE')
-    writeUTFBytes(view, 12, 'fmt ')
-    view.setUint32(16, 16, true)
-    view.setUint16(20, 1, true)
-    view.setUint16(22, numOfChan, true)
-    view.setUint32(24, buffer.sampleRate, true)
-    view.setUint32(28, buffer.sampleRate * numOfChan * 2, true)
-    view.setUint16(32, numOfChan * 2, true)
-    view.setUint16(34, 16, true)
-    writeUTFBytes(view, 36, 'data')
-    view.setUint32(40, length - 44, true)
-  }
+  useEffect(() => {
+    if (!addNoise || !noiseGainRef.current) return
 
-  const writeUTFBytes = (view: DataView, offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i))
-    }
-  }
+    const interval = setInterval(() => {
+      const newNoiseLevel = Math.random() * (0.5 - 0.01) + 0.01
+      setNoiseLevel(newNoiseLevel)
+      noiseGainRef.current!.gain.setValueAtTime(newNoiseLevel, audioContextRef.current!.currentTime)
+    }, 1000)
 
-  // Alterna el estado del ruido
-  const toggleNoise = useCallback(() => {
-    if (addNoise) {
-      noiseWaveSurferRef.current?.pause()
-      setAddNoise(false)
-    } else {
-      noiseWaveSurferRef.current?.play()
-      setAddNoise(true)
-    }
+    return () => clearInterval(interval)
   }, [addNoise])
 
+  const togglePlay = () => {
+    if (!wavesurfer) return
+
+    if (isPlaying) {
+      wavesurfer.pause()
+      noiseGainRef.current!.gain.value = 0
+      setAddNoise(false)
+    } else {
+      wavesurfer.play()
+      generateNoise() // 🔊 Asegurar que el ruido también se reproduzca
+      setAddNoise(true)
+    }
+
+    setIsPlaying(!isPlaying)
+  }
+
+  const rgbToString = (color: any) => `rgb(${color.r}, ${color.g}, ${color.b}, 0.8)`;
+
+
+
   return (
-    <div className="card">
-      {/* Visualización del audio principal */}
-      <div ref={containerRef} style={{ marginBottom: '1em' }} />
+    <div className="card overflow-y flex flex-column gap-2" style={{ height: 'calc(100vh - 9rem)' }}>
+      <h4>Forma de onda de la canción</h4>
+      <div ref={containerRef} />
+      <div className='flex gap-2'>
+        <h4>Espectrograma en tiempo real</h4>
+        <div>
+          <i className="pi pi-info-circle"
+                  style={{ fontSize: '2rem', cursor: 'pointer', color: 'var(--primary-color)' }}
+                  onMouseEnter={(e) => op.current?.show(e, e.currentTarget)} // Mostrar el ColorPicker al pasar el mouse
+                  onMouseLeave={() => op.current?.hide()} // Ocultar cuando se retira el mouse
+                />
+        </div>
+        <OverlayPanel ref={op}>
+            <div className='flex align-items-center gap-2'>
+              <ColorPicker format="rgb" value={colorRuido}/>
+              <label>Este es el color del ruido</label>
+            </div>
+            <div className='flex align-items-center gap-2'>
+              <ColorPicker format="hex" value={primaryColor}/>
+              <label>Este es el color de la canción</label>
+            </div>
+        </OverlayPanel>
+      </div>
+      <canvas ref={canvasRef} style={{ marginBottom: '1em', border: '2px solid var(--primary-color)', width: '50%', borderRadius: '5px', height: '200px'}} />
 
-      {/* Visualización del ruido */}
-      <div ref={noiseContainerRef} />
-
-      <p className="text-sm font-bold text-900 mb-3">
-        Current time: {formatTime(currentTime)}
-      </p>
-
-      <div style={{ margin: '1em 0', display: 'flex', gap: '1em' }}>
-        <Button onClick={() => setUrlIndex((index) => (index + 1) % audioUrls.length)}>Change audio</Button>
-        <Button onClick={() => wavesurfer?.playPause()} style={{ minWidth: '5em' }}>
-          {isPlaying ? 'Pause' : 'Play'}
-        </Button>
-        <Button onClick={toggleNoise} style={{ minWidth: '5em' }}>
-          {addNoise ? 'Remove Noise' : 'Add Noise'}
-        </Button>
+      <div className="flex gap-2">
+        <Button onClick={togglePlay}>{isPlaying ? 'Stop' : 'Play'}</Button>
       </div>
     </div>
   )
