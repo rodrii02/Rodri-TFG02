@@ -44,7 +44,7 @@ const AppMenu = () => {
                 {
                     label: 'Juego bola',
                     icon: 'pi pi-fw pi-circle-fill',
-                    to: '/auth/access'
+                    to: '/home/ui/neurofeedback/juegoBola'
                 }
             ]
         }

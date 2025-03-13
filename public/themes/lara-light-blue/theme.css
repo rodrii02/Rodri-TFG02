@@ -4098,7 +4098,7 @@
   .p-dialog .p-dialog-header .p-dialog-header-icon:enabled:hover {
     color: #374151;
     border-color: transparent;
-    background: var(--primary-color);
+    background-color: var(--surface-hover);
   }
   .p-dialog .p-dialog-header .p-dialog-header-icon:focus-visible {
     outline: 0 none;

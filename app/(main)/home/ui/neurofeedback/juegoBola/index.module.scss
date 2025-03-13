@@ -1,0 +1,20 @@
+/* index.module.scss */
+.image {
+    @media (max-width: 991px) {
+        .responsive-image {
+            max-width: 70%; /* Ajusta el ancho */
+        }
+    }
+
+    @media (max-width: 768px) {
+        .responsive-image {
+            max-width: 95%; /* Ajusta el ancho */
+        }
+    }
+
+    @media (max-width: 600px) {
+        .responsive-image {
+            max-width: 100%; /* Ajusta el ancho */
+        }
+    }
+}
