@@ -11,6 +11,8 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
 import { ChartData, ChartOptions } from 'chart.js';
 import { Chart } from 'primereact/chart';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const audioUrls = ['/layout/audio/OneRepublic_I_Aint_Worried.mp3'];
 
@@ -266,6 +268,22 @@ const Audiopage = () => {
     },
   };
 
+  const exportToExcel = () => {
+    const data = noiseHistory.map((value, index) => ({
+      Segundo: `Sec${index + 1}`,
+      Ruido: value,
+    }));
+  
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ruido');
+  
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(blob, 'niveles_ruido.xlsx');
+  };
+  
+
   const rgbToString = (color: any, alpha = 0.8) => `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
 
   return (
@@ -300,7 +318,16 @@ const Audiopage = () => {
       <Toast ref={toast} />
       <ConfirmDialog />
       <Dialog header="GRAFICO DE RUIDO" visible={visible} style={{ width: '50vw' }} onHide={() => {if (!visible) return; setVisible(false); }}>
+        <div className="flex justify-content-end mt-3">
+          <Button
+            className='bg-primary'
+            label="Exportar a Excel"
+            icon="pi pi-file-excel"
+            onClick={exportToExcel}
+          />
+        </div>
         <Chart type="line" data={chartData} options={chartOptions}></Chart>
+
       </Dialog>
     </div>
 

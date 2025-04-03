@@ -3,7 +3,7 @@
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { classNames } from 'primereact/utils';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const gridSize = 15; // Tamaño del laberinto (15x15)
 const cellSize = 30; // Tamaño de cada celda en píxeles
@@ -65,7 +65,7 @@ const isPathAvailable = (maze: number[][]) => {
     const directions = [
         [0, 1], [1, 0], [0, -1], [-1, 0]
     ];
-    debugger
+
     while (queue.length) {
         const [x, y] = queue.shift()!;
         if (x === gridSize - 2 && y === gridSize - 2) return true; // Si llegamos a la meta, hay camino
@@ -89,6 +89,7 @@ const JuegoLaberintoPage = () => {
     const [active, setActive] = useState(false);
     const [gameOver, setGameOver] = useState(false);
     const [gameWon, setGameWon] = useState(false);
+    const ws = useRef<WebSocket | null>(null);
 
     // 🔹 Generar un laberinto válido
     useEffect(() => {
@@ -112,23 +113,59 @@ const JuegoLaberintoPage = () => {
 
     //  Mover la bola con las teclas de dirección
     const moveBall = (dx: number, dy: number) => {
-        const newX = ball.x + dx;
-        const newY = ball.y + dy;
-
-        if (maze[newY][newX] === 0) {
-            setBall({ x: newX, y: newY });
-
-            if (newX === goal.x && newY === goal.y) {
-                setGameWon(true);
-                setActive(false);
+        setBall((prevBall) => {
+            const newX = prevBall.x + dx;
+            const newY = prevBall.y + dy;
+            console.log("🔵 Moviendo a:", newX, newY, maze[newY]?.[newX]);
+    
+            if (maze[newY]?.[newX] === 0) {
+                if (newX === goal.x && newY === goal.y) {
+                    setGameWon(true);
+                    setActive(false);
+                }
+                return { x: newX, y: newY }; // Devuelve el nuevo estado
             }
+            return prevBall; // Si no puede moverse, mantiene la posición
+        });
+    };
+    
+
+    const moveBallFromMessage = (direction: string) => {
+        
+        if(active && !gameOver && !gameWon){
+            if (direction === "arriba") moveBall(0, -1);
+            if (direction === "abajo") moveBall(0, 1);
+            if (direction === "izquierda") moveBall(-1, 0);
+            if (direction === "derecha") moveBall(1, 0);
         }
     };
+
+    useEffect(() => {
+        const ws = new WebSocket("ws://localhost:8000/ws");
+    
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.marker) {
+                console.log("📡 WebSocket recibió:", message.marker);
+
+                moveBallFromMessage(message.marker);
+            }
+        };
+    
+        ws.onclose = (event) => {
+            console.log("🔴 WebSocket desconectado", event);
+            console.log("🔴 Código de cierre:", event.code);
+            console.log("🔴 Razón:", event.reason);
+        };        
+    
+        return () => ws.close();
+    }, [ball, active]); // ✅ Agrega ball para asegurarse de que se actualiza correctamente    
 
     //  Detectar teclas de movimiento
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (active && !gameOver && !gameWon) {
+                console.log("🔵 Tecla presionada:", ball);
                 if (e.key === 'ArrowUp') moveBall(0, -1);
                 if (e.key === 'ArrowDown') moveBall(0, 1);
                 if (e.key === 'ArrowLeft') moveBall(-1, 0);
