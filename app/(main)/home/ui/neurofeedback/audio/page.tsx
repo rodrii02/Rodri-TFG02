@@ -1,184 +1,337 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useWavesurfer } from '@wavesurfer/react'
-import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.js'
-import { Button } from 'primereact/button'
-import WaveSurfer from 'wavesurfer.js'
 
-const audioUrls = ['/layout/audio/OneRepublic_I_Aint_Worried.mp3']
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useWavesurfer } from '@wavesurfer/react';
+import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.js';
+import { Button } from 'primereact/button';
+import { ColorPicker } from 'primereact/colorpicker';
+import { OverlayPanel } from 'primereact/overlaypanel';
+import { Dialog } from 'primereact/dialog';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Toast } from 'primereact/toast';
+import { ChartData, ChartOptions } from 'chart.js';
+import { Chart } from 'primereact/chart';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
-const formatTime = (seconds: any) =>
-  [seconds / 60, seconds % 60]
-    .map((v) => `0${Math.floor(v)}`.slice(-2))
-    .join(':')
+const audioUrls = ['/layout/audio/OneRepublic_I_Aint_Worried.mp3'];
 
 const Audiopage = () => {
-  const containerRef = useRef<HTMLDivElement | null>(null) // Contenedor de WaveSurfer principal
-  const noiseContainerRef = useRef<HTMLDivElement | null>(null) // Contenedor para el ruido
-  const [urlIndex, setUrlIndex] = useState(0) // Índice de la canción actual
-  const [addNoise, setAddNoise] = useState(false) // Estado que controla si el ruido está activo
-  const primaryColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--primary-color')
-    .trim()
-    const secondColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--second-color')
-    .trim()
-  const noiseColor = 'rgba(255, 0, 0, 0.3)' // Color del ruido
+  const [noiseHistory, setNoiseHistory] = useState<number[]>([]); // 📌 Guarda los valores de ruido
+  const noiseHistoryRef = useRef<number[]>([]); // 📌 useRef para almacenar valores sin re-renderizar
+  const toast = useRef<Toast>(null);
+  const [visible, setVisible] = useState(false);
+  const accept = () => {
+    setVisible(true);
+  }
 
-  const { wavesurfer, isPlaying, currentTime } = useWavesurfer({
-    container: containerRef, // Contenedor para el WaveSurfer principal
-    height: 150, // Altura de la onda
-    waveColor: primaryColor, // Color de la onda principal
-    progressColor: secondColor, // Color del progreso
-    url: audioUrls[urlIndex], // URL del archivo de audio principal
-    plugins: useMemo(() => [TimelinePlugin.create()], []), // Plugin de línea de tiempo
-  })
+  const reject = () => {
+    setVisible(false);
+  }
 
-  const noiseWaveSurferRef = useRef<WaveSurfer | null>(null) // Referencia al WaveSurfer del ruido
-  const audioContextRef = useRef<AudioContext | null>(null) // Referencia al AudioContext
-  const noiseGainRef = useRef<GainNode | null>(null) // Nodo Gain para controlar la intensidad del ruido
-  const noiseBufferRef = useRef<AudioBuffer | null>(null) // Buffer de ruido blanco
+  const confirm1 = () => {
+      confirmDialog({
+          message: 'Quieres ver los resultados?',
+          header: 'Confirmation',
+          icon: 'pi pi-exclamation-triangle',
+          defaultFocus: 'accept',
+          accept,
+          reject
+      });
+  };
 
-  // Configura el AudioContext y genera el buffer de ruido
+
+  const op = useRef<OverlayPanel>(null);
+  const [colorRuido, setColorRuido] = useState({ r: 151, g: 18, b: 47 });
+
+  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+  const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim();
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [addNoise, setAddNoise] = useState(false);
+  const [noiseLevel, setNoiseLevel] = useState(0.5);
+
+  // Inicializamos Wavesurfer con las configuraciones necesarias
+  const { wavesurfer } = useWavesurfer({
+    container: containerRef,
+    height: 150,
+    waveColor: secondColor,
+    progressColor: primaryColor,
+    url: audioUrls[0],
+    plugins: useMemo(() => [TimelinePlugin.create()], []),
+  });
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const noiseGainRef = useRef<GainNode | null>(null);
+  const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  // 🔹 Separar los analizadores de audio y ruido
+  const analyserAudioRef = useRef<AnalyserNode | null>(null); // Analiza la canción
+  const analyserNoiseRef = useRef<AnalyserNode | null>(null); // Analiza el ruido blanco
+
   useEffect(() => {
     if (wavesurfer && !audioContextRef.current) {
-      const audioContext = new AudioContext()
-      const mediaElement = wavesurfer.getMediaElement() // Elemento de audio principal
+      const audioContext = new AudioContext();
+      const mediaElement = wavesurfer.getMediaElement();
+      const audioSource = audioContext.createMediaElementSource(mediaElement);
 
-      // Crea un nodo de fuente para el audio principal
-      const audioSource = audioContext.createMediaElementSource(mediaElement)
+      // 🔹 Analizador para la canción
+      analyserAudioRef.current = audioContext.createAnalyser();
+      analyserAudioRef.current.fftSize = 2048;
+      audioSource.connect(analyserAudioRef.current);
+      analyserAudioRef.current.connect(audioContext.destination);
 
-      // Crea un nodo Gain para controlar el volumen del audio
-      const gainNode = audioContext.createGain()
-      gainNode.gain.value = 1
+      // 🔹 Analizador para el ruido
+      analyserNoiseRef.current = audioContext.createAnalyser();
+      analyserNoiseRef.current.fftSize = 2048;
+      noiseGainRef.current = audioContext.createGain();
+      noiseGainRef.current.gain.value = 0; // Iniciar con el ruido apagado
+      noiseGainRef.current.connect(analyserNoiseRef.current);
+      analyserNoiseRef.current.connect(audioContext.destination);
 
-      // Conecta el audio al GainNode y al destino
-      audioSource.connect(gainNode)
-      gainNode.connect(audioContext.destination)
-
-      // Configura el ruido
-      const noiseGain = audioContext.createGain()
-      noiseGain.gain.value = 0 // El ruido comienza desactivado
-      noiseGain.connect(audioContext.destination)
-
-      audioContextRef.current = audioContext
-      noiseGainRef.current = noiseGain
-
-      // Genera el buffer de ruido
-      const duration = mediaElement.duration || 10 // Duración predeterminada si no está disponible
-      const noiseBuffer = generateNoiseBuffer(audioContext, duration)
-      noiseBufferRef.current = noiseBuffer
-
-      // Configura WaveSurfer para el ruido
-      noiseWaveSurferRef.current = WaveSurfer.create({
-        container: noiseContainerRef.current!,
-        height: 150, // Altura igual a la del WaveSurfer principal
-        waveColor: noiseColor, // Color del ruido
-        progressColor: 'rgba(255, 0, 0, 0.8)', // Progreso del ruido
-      })
-
-      // Genera un archivo WAV para el ruido y lo carga en el WaveSurfer del ruido
-      const noiseUrl = generateNoiseFile(noiseBuffer, audioContext)
-      noiseWaveSurferRef.current.load(noiseUrl)
+      audioContextRef.current = audioContext;
     }
-  }, [wavesurfer])
+  }, [wavesurfer]);
 
-  // Genera un buffer de ruido blanco
-  const generateNoiseBuffer = (audioContext: AudioContext, duration: number) => {
-    const bufferSize = audioContext.sampleRate * duration // Tamaño del buffer basado en la duración
-    const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate)
-    const output = noiseBuffer.getChannelData(0)
+  // 🔹 Función para generar ruido blanco real
+  const generateNoise = () => {
+    if (!audioContextRef.current) return;
 
-    // Llena el buffer con valores aleatorios entre -1 y 1
+    const audioContext = audioContextRef.current;
+
+    if (noiseSourceRef.current) {
+      noiseSourceRef.current.stop();
+      noiseSourceRef.current.disconnect();
+    }
+
+    noiseGainRef.current!.gain.value = noiseLevel;
+
+    const bufferSize = audioContext.sampleRate * 2;
+    const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+
     for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1
+      output[i] = (Math.random() * 2 - 1) * noiseLevel;
     }
 
-    return noiseBuffer
-  }
+    const noiseSource = audioContext.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    noiseSource.loop = true;
 
-  // Genera un archivo WAV a partir del buffer de ruido
-  const generateNoiseFile = (buffer: AudioBuffer, audioContext: AudioContext) => {
-    const numOfChan = buffer.numberOfChannels
-    const length = buffer.length * numOfChan * 2 + 44
-    const bufferData = new ArrayBuffer(length)
-    const view = new DataView(bufferData)
-
-    // Encabezado WAV
-    writeWAVHeader(view, buffer)
-
-    // Datos PCM
-    let offset = 44
-    for (let i = 0; i < buffer.numberOfChannels; i++) {
-      const channel = buffer.getChannelData(i)
-      for (let j = 0; j < channel.length; j++, offset += 2) {
-        const sample = Math.max(-1, Math.min(1, channel[j]))
-        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true)
+    if (noiseGainRef.current) {
+      noiseSource.connect(noiseGainRef.current);
+      if (analyserNoiseRef.current) {
+        noiseGainRef.current.connect(analyserNoiseRef.current); // 🔹 Conectar el ruido al analizador
       }
     }
+    
+    noiseSource.start();
+    noiseSourceRef.current = noiseSource;
+  };
 
-    return URL.createObjectURL(new Blob([bufferData], { type: 'audio/wav' }))
-  }
+  // 🔹 Dibujar la señal de la canción y el ruido
+  useEffect(() => {
+    if (!canvasRef.current || !analyserAudioRef.current || !analyserNoiseRef.current) return;
 
-  const writeWAVHeader = (view: DataView, buffer: AudioBuffer) => {
-    const numOfChan = buffer.numberOfChannels
-    const length = buffer.length * numOfChan * 2 + 44
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    writeUTFBytes(view, 0, 'RIFF')
-    view.setUint32(4, length - 8, true)
-    writeUTFBytes(view, 8, 'WAVE')
-    writeUTFBytes(view, 12, 'fmt ')
-    view.setUint32(16, 16, true)
-    view.setUint16(20, 1, true)
-    view.setUint16(22, numOfChan, true)
-    view.setUint32(24, buffer.sampleRate, true)
-    view.setUint32(28, buffer.sampleRate * numOfChan * 2, true)
-    view.setUint16(32, numOfChan * 2, true)
-    view.setUint16(34, 16, true)
-    writeUTFBytes(view, 36, 'data')
-    view.setUint32(40, length - 44, true)
-  }
+    canvas.width = 600;
+    canvas.height = 200;
 
-  const writeUTFBytes = (view: DataView, offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i))
-    }
-  }
+    const bufferLength = analyserAudioRef.current.frequencyBinCount;
+    const dataArrayAudio = new Uint8Array(bufferLength);
+    const noiseDataArray = new Uint8Array(bufferLength);
 
-  // Alterna el estado del ruido
-  const toggleNoise = useCallback(() => {
-    if (addNoise) {
-      noiseWaveSurferRef.current?.pause()
-      setAddNoise(false)
+    const draw = () => {
+      requestAnimationFrame(draw);
+
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      let sliceWidth = canvas.width / bufferLength;
+      let x = 0;
+
+      // 🔹 Dibujar la onda de la canción
+      analyserAudioRef.current!.getByteTimeDomainData(dataArrayAudio);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = primaryColor;
+      ctx.beginPath();
+
+      for (let i = 0; i < bufferLength; i++) {
+        let v = dataArrayAudio[i] / 255.0;
+        let y = canvas.height - v * canvas.height
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+
+        x += sliceWidth;
+      }
+      ctx.stroke();
+
+      // 🔹 Dibujar la onda del ruido
+      if (addNoise) {
+        analyserNoiseRef.current!.getByteTimeDomainData(noiseDataArray);
+        ctx.strokeStyle = rgbToString(colorRuido);
+        ctx.beginPath();
+        x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          let v = noiseDataArray[i] / 255.0;
+          let y = canvas.height - v * canvas.height
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+
+          x += sliceWidth;
+        }
+        ctx.stroke();
+      }
+    };
+
+    draw();
+  }, [addNoise, noiseLevel]);
+
+  const togglePlay = () => {
+    if (!wavesurfer) return;
+
+    if (isPlaying) {
+      wavesurfer.pause();
+      noiseGainRef.current!.gain.value = 0;
+      setNoiseHistory([...noiseHistoryRef.current]);
+      setAddNoise(false);
+      // setVisible(true);
+      confirm1()
     } else {
-      noiseWaveSurferRef.current?.play()
-      setAddNoise(true)
+      wavesurfer.play();
+      generateNoise();
+      setAddNoise(true);
+      noiseHistoryRef.current = []; // 🗑 Limpiar historial al iniciar
     }
-  }, [addNoise])
+
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    if (visible) {
+      setNoiseHistory([...noiseHistoryRef.current]); // 🔹 Sincroniza cuando se abre el Dialog
+    }
+  }, [visible]);
+  
+  // 🔹 Cambiar el nivel de ruido dinámicamente cada segundo
+  useEffect(() => {
+    if (!addNoise || !noiseGainRef.current) return;
+
+    const interval = setInterval(() => {
+      const newNoiseLevel = Math.random() * (0.5 - 0.01) + 0.01; // Rango entre 0.01 y 0.5
+      setNoiseLevel(newNoiseLevel);
+      noiseGainRef.current!.gain.setValueAtTime(newNoiseLevel, audioContextRef.current!.currentTime);
+      console.log('Nivel de ruido:', newNoiseLevel);
+      noiseHistoryRef.current.push(newNoiseLevel);
+
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [addNoise, visible]);
+
+  const chartData = {
+    labels: noiseHistory.map((_, i) => `S ${i + 1}`),
+    datasets: [
+      {
+        label: 'Nivel de Ruido',
+        data: noiseHistory,
+        borderColor: 'rgb(151, 18, 47)',
+        backgroundColor: 'rgb(151, 18, 47)',
+        fill: false,
+        tension: 0.4,
+      },
+    ],
+  };
+
+  // 📊 **Opciones de la gráfica**
+  const chartOptions = {
+    plugins: {
+      legend: { labels: { color: '#000' } },
+    },
+    scales: {
+      x: { ticks: { color: '#000' }, grid: { color: '#ddd' } },
+      y: { ticks: { color: '#000' }, grid: { color: '#ddd' } },
+    },
+  };
+
+  const exportToExcel = () => {
+    const data = noiseHistory.map((value, index) => ({
+      Segundo: `Sec${index + 1}`,
+      Ruido: value,
+    }));
+  
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ruido');
+  
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(blob, 'niveles_ruido.xlsx');
+  };
+  
+
+  const rgbToString = (color: any, alpha = 0.8) => `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
 
   return (
-    <div className="card">
-      {/* Visualización del audio principal */}
-      <div ref={containerRef} style={{ marginBottom: '1em' }} />
-
-      {/* Visualización del ruido */}
-      <div ref={noiseContainerRef} />
-
-      <p className="text-sm font-bold text-900 mb-3">
-        Current time: {formatTime(currentTime)}
-      </p>
-
-      <div style={{ margin: '1em 0', display: 'flex', gap: '1em' }}>
-        <Button onClick={() => setUrlIndex((index) => (index + 1) % audioUrls.length)}>Change audio</Button>
-        <Button onClick={() => wavesurfer?.playPause()} style={{ minWidth: '5em' }}>
-          {isPlaying ? 'Pause' : 'Play'}
-        </Button>
-        <Button onClick={toggleNoise} style={{ minWidth: '5em' }}>
-          {addNoise ? 'Remove Noise' : 'Add Noise'}
-        </Button>
+    <div className="card overflow-y flex flex-column gap-2" style={{ height: 'calc(100vh - 9rem)' }}>
+      <h4>Forma de onda de la canción</h4>
+      <div ref={containerRef} />
+      <div className='flex gap-2'>
+        <h4>Espectrograma en tiempo real</h4>
+        <div>
+          <i className="pi pi-info-circle"
+                  style={{ fontSize: '2rem', cursor: 'pointer', color: 'var(--primary-color)' }}
+                  onMouseEnter={(e) => op.current?.show(e, e.currentTarget)} // Mostrar el ColorPicker al pasar el mouse
+                  onMouseLeave={() => op.current?.hide()} // Ocultar cuando se retira el mouse
+                />
+        </div>
+        <OverlayPanel ref={op}>
+            <div className='flex align-items-center gap-2'>
+              <ColorPicker format="rgb" value={colorRuido}/>
+              <label>Este es el color del ruido</label>
+            </div>
+            <div className='flex align-items-center gap-2'>
+              <ColorPicker format="hex" value={primaryColor}/>
+              <label>Este es el color de la canción</label>
+            </div>
+        </OverlayPanel>
       </div>
-    </div>
-  )
-}
+      <canvas ref={canvasRef} style={{ marginBottom: '1em', border: '2px solid var(--primary-color)', width: '50%', borderRadius: '5px', height: '200px'}} />
 
-export default Audiopage
+      <div className="flex gap-2">
+        <Button onClick={togglePlay}>{isPlaying ? 'Stop' : 'Play'}</Button>
+      </div>
+      <Toast ref={toast} />
+      <ConfirmDialog />
+      <Dialog header="GRAFICO DE RUIDO" visible={visible} style={{ width: '50vw' }} onHide={() => {if (!visible) return; setVisible(false); }}>
+        <div className="flex justify-content-end mt-3">
+          <Button
+            className='bg-primary'
+            label="Exportar a Excel"
+            icon="pi pi-file-excel"
+            onClick={exportToExcel}
+          />
+        </div>
+        <Chart type="line" data={chartData} options={chartOptions}></Chart>
+
+      </Dialog>
+    </div>
+
+  );
+};
+
+export default Audiopage;

@@ -1,52 +1,106 @@
 'use client'
-import React, { useContext, useState, useEffect } from 'react';
+
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Image } from 'primereact/image';
 import { Button } from 'primereact/button';
-import { classNames } from 'primereact/utils';
+import { Dialog } from 'primereact/dialog';
+import { Chart } from 'primereact/chart';
 import { useInterval } from 'primereact/hooks';
+import { classNames } from 'primereact/utils';
 import { LayoutContext } from '@/layout/context/layoutcontext';
 import styles from './index.module.scss';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Toast } from 'primereact/toast';
 
 const ImagePage = () => {
     const { layoutState } = useContext(LayoutContext);
-    const [blurLevel, setBlurLevel] = useState(0); // Opacidad inicial de la imagen
+    const [blurLevel, setBlurLevel] = useState(0);
     const [seconds, setSeconds] = useState(0);
     const [active, setActive] = useState(false);
+    const [visible, setVisible] = useState(false);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
+    const blurHistoryRef = useRef<number[]>([]);
+    const [blurHistory, setBlurHistory] = useState<number[]>([]);
+
+    const toast = useRef<Toast>(null);
+    
+    // Función para aceptar o rechazar el diálogo de confirmación
+    const accept = () => {
+    setVisible(true);
+    }
+
+    const reject = () => {
+    setVisible(false);
+    }
+
+    const confirm1 = () => {
+        confirmDialog({
+            message: 'Quieres ver los resultados?',
+            header: 'Confirmation',
+            icon: 'pi pi-exclamation-triangle',
+            defaultFocus: 'accept',
+            accept,
+            reject
+        });
+    };
+
     useEffect(() => {
-        // Definimos una función para manejar el evento de redimensionamiento de la ventana
         const handleResize = () => setWindowWidth(window.innerWidth);
-    
-        // Añadimos un event listener para actualizar el ancho de la ventana cuando se redimensiona
         window.addEventListener('resize', handleResize);
-    
-        // Limpiamos el event listener cuando el componente se desmonta
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useInterval(
-        () => {
-            updateOpacity();
-            setSeconds((prevSecond) => (prevSecond === 59 ? 0 : prevSecond + 1));
-        },
-        1000,
-        active
-    );
+    useInterval(() => {
+        const random = Math.random() * 4;
+        setBlurLevel(random);
+        blurHistoryRef.current.push(random); // Guardar sin renderizar
+        setSeconds((prev) => prev + 1);
+    }, 1000, active);
 
-    const updateOpacity = () => {
-        const randomNumber = Math.random() * 4; // Genera un número entre 0 y 4
-        console.log("blurLevel", randomNumber);
-        setBlurLevel(randomNumber); // Opacidad 1 si el número es bajo, 0.2 si no
+    const toggleSession = () => {
+        setActive(!active);
+        if (active) {
+            // Al detener, actualiza el estado y muestra gráfico
+            setBlurHistory([...blurHistoryRef.current]);
+            confirm1();
+            // setVisible(true);
+        }
     };
 
-    const resetSeconds = () => {
+    const resetSession = () => {
         setBlurLevel(0);
         setSeconds(0);
         setActive(false);
+        blurHistoryRef.current = [];
+        setBlurHistory([]);
     };
 
     const imageMaxWidth = layoutState.staticMenuDesktopInactive ? '55%' : '70%';
+
+    const chartData = {
+        labels: blurHistory.map((_, i) => `S${i + 1}`),
+        datasets: [
+            {
+                label: 'Nivel de Desenfoque',
+                data: blurHistory,
+                borderColor: '#007ad9',
+                backgroundColor: '#007ad9',
+                fill: false,
+                tension: 0.3,
+            },
+        ],
+    };
+
+    const chartOptions = {
+        plugins: {
+            legend: { labels: { color: '#000' } },
+        },
+        scales: {
+            x: { ticks: { color: '#000' }, grid: { color: '#ddd' } },
+            y: { ticks: { color: '#000' }, grid: { color: '#ddd' } },
+        },
+    };
 
     return (
         <div className="card overflow-y" style={{ height: 'calc(100vh - 9rem)' }}>
@@ -55,23 +109,32 @@ const ImagePage = () => {
                     src="/layout/images/neurofeedback/imageCalm.jpeg"
                     alt="Calm Image"
                     width="100%"
-                    className={classNames(styles['responsive-image'])}                    
+                    className={styles['responsive-image']}
                     style={{
                         maxWidth: windowWidth > 991 ? imageMaxWidth : undefined,
                         height: 'auto',
-                        filter: `blur(${blurLevel}px)`, // Aplica el desenfoque dinámico
-                        transition: 'filter 0.5s ease, max-width 0.5s ease' // Transición suave
+                        filter: `blur(${blurLevel}px)`,
+                        transition: 'filter 0.5s ease, max-width 0.5s ease',
                     }}
                 />
                 <div className="flex flex-column align-items-center">
                     <div className="mb-2 font-bold text-4xl">{seconds}</div>
-                    <div className='flex gap-2'>
-                        <Button className={classNames('w-8rem', { 'p-button-danger': active })}
-                            onClick={() => setActive(!active)} label={active ? 'Stop' : 'Resume'} />
-                        <Button icon="pi pi-refresh" onClick={resetSeconds} />
+                    <div className="flex gap-2">
+                        <Button
+                            className={classNames('w-8rem', { 'p-button-danger': active })}
+                            onClick={toggleSession}
+                            label={active ? 'Stop' : 'Resume'}
+                        />
+                        <Button icon="pi pi-refresh" onClick={resetSession} />
                     </div>
                 </div>
             </div>
+
+            <Toast ref={toast} />
+            <ConfirmDialog />
+            <Dialog header="Gráfico de desenfoque" visible={visible} style={{ width: '50vw' }} onHide={() => {if (!visible) return; setVisible(false); }}>
+                <Chart type="line" data={chartData} options={chartOptions} />
+            </Dialog>
         </div>
     );
 };

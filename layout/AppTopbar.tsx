@@ -50,10 +50,10 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
 
     return (
         <div className="layout-topbar">
-            <Link href="/" className="layout-topbar-logo">
-                <img src={`/layout/images/logo.webp`} width="47.22px" height={'35px'} alt="logo" />
-                <span>NEUROAPP</span>
-            </Link>
+            <a className="layout-topbar-logo">
+                <img src={`/layout/images/HeaderLogoSF.svg`} alt="logo" />
+                {/* <span>NEUROAPP</span> */}
+            </a>
 
             {/* Botón de navegación principal */}
             <button ref={menubuttonRef} type="button" className="p-link layout-menu-button layout-topbar-button" onClick={onMenuToggle}>

@@ -16,10 +16,10 @@ const AppMenu = () => {
             items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/home' }]
         },
         {
-            label: 'UI Components',
+            label: 'Examples',
             items: [
-                { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/home/ui/button', class: 'rotated-icon' },
-                { label: 'Chart', icon: 'pi pi-fw pi-chart-bar', to: '/home/ui/charts' },
+                // { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/home/ui/button', class: 'rotated-icon' },
+                { label: 'Grafica', icon: 'pi pi-fw pi-chart-bar', to: '/home/ui/charts' },
             ]
         },
         {
@@ -44,7 +44,7 @@ const AppMenu = () => {
                 {
                     label: 'Juego bola',
                     icon: 'pi pi-fw pi-circle-fill',
-                    to: '/auth/access'
+                    to: '/home/ui/neurofeedback/juegoBola'
                 }
             ]
         }
