@@ -3,13 +3,12 @@
 import React, { createContext, useContext, useState } from 'react';
 
 type ConnectionMode = 'crown' | 'websocket' | null;
-type ConnectionState = 'online' | 'offline' | null;
 
 interface ConnectionInfo {
     mode: ConnectionMode;
     //   username?: string;
-    selectedDevice?: string | null;   // Nickname (Crown) o WS host
-    state?: ConnectionState;
+    selectedDeviceContext?: string | null;   // Nickname (Crown) o WS host
+    stateContext?: string | null;
 
     // Solo Crown
     charging?: boolean;
@@ -18,8 +17,8 @@ interface ConnectionInfo {
     // Setters
     setMode: (mode: ConnectionMode) => void;
     //   setUsername: (name: string) => void;
-    setSelectedDevice: (device: string | null) => void;
-    setState: (state: ConnectionState) => void;
+    setSelectedDeviceContext: (device: string | null) => void;
+    setStateContext: (state: string | null) => void;
     setCharging: (charging: boolean) => void;
     setBattery: (battery: number) => void;
 }
@@ -34,9 +33,9 @@ export const useConnection = () => {
 
 export const ConnectionProvider = ({ children }: { children: React.ReactNode }) => {
     const [mode, setMode] = useState<ConnectionMode>(null);
-    const [username, setUsername] = useState<string>();
-    const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
-    const [state, setState] = useState<ConnectionState>(null);
+    // const [username, setUsername] = useState<string>();
+    const [selectedDeviceContext, setSelectedDeviceContext] = useState<string | null>(null);
+    const [stateContext, setStateContext] = useState<string | null>(null);
 
     const [charging, setCharging] = useState<boolean>(false);
     const [battery, setBattery] = useState<number>();
@@ -46,14 +45,14 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
             value={{
                 mode,
                 // username,
-                selectedDevice,
-                state,
+                selectedDeviceContext,
+                stateContext,
                 charging,
                 battery,
                 setMode,
                 // setUsername,
-                setSelectedDevice,
-                setState,
+                setSelectedDeviceContext,
+                setStateContext,
                 setCharging,
                 setBattery
             }}

@@ -141,7 +141,7 @@ const JuegoLaberintoPage = () => {
     };
 
     useEffect(() => {
-        const ws = new WebSocket("ws://localhost:8000/ws");
+        const ws = new WebSocket("ws://localhost:8008/ws");
     
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);

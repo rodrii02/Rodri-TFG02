@@ -11,12 +11,12 @@ const Home = () => {
     const router = useRouter();
 
 
-    useEffect(() => {
-      console.log("User:", user, "LoadingUser:", loadingUser);
-      if (!loadingUser && !user &&router) {
-          router.push('../login'); // Redirige a la página de inicio si está autenticado
-        }
-      }, [router, user]);
+    // useEffect(() => {
+    //   console.log("User:", user, "LoadingUser:", loadingUser);
+    //   if (!loadingUser && !user &&router) {
+    //       router.push('../login'); // Redirige a la página de inicio si está autenticado
+    //     }
+    //   }, [router, user]);
     return (
       <div className="card flex flex-column text-center" style={{ height: 'calc(100vh - 9rem)' }}>
         <h1>NEUROFEEDBACK</h1>
