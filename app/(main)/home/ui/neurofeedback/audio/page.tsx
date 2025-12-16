@@ -9,7 +9,6 @@ import { OverlayPanel } from 'primereact/overlaypanel';
 import { Dialog } from 'primereact/dialog';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
-import { ChartData, ChartOptions } from 'chart.js';
 import { Chart } from 'primereact/chart';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -42,7 +41,7 @@ const Audiopage = () => {
 
 
   const op = useRef<OverlayPanel>(null);
-  const [colorRuido, setColorRuido] = useState({ r: 151, g: 18, b: 47 });
+  const [colorRuido] = useState({ r: 151, g: 18, b: 47 });
 
   const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
   const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim();
@@ -52,6 +51,8 @@ const Audiopage = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [addNoise, setAddNoise] = useState(false);
   const [noiseLevel, setNoiseLevel] = useState(0.5);
+
+  const rgbToString = (color: any, alpha = 0.8) => `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
 
   // Inicializamos Wavesurfer con las configuraciones necesarias
   const { wavesurfer } = useWavesurfer({
@@ -152,7 +153,7 @@ const Audiopage = () => {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      let sliceWidth = canvas.width / bufferLength;
+      const sliceWidth = canvas.width / bufferLength;
       let x = 0;
 
       // 🔹 Dibujar la onda de la canción
@@ -162,8 +163,8 @@ const Audiopage = () => {
       ctx.beginPath();
 
       for (let i = 0; i < bufferLength; i++) {
-        let v = dataArrayAudio[i] / 255.0;
-        let y = canvas.height - v * canvas.height
+        const v = dataArrayAudio[i] / 255.0;
+        const y = canvas.height - v * canvas.height
 
         if (i === 0) {
           ctx.moveTo(x, y);
@@ -183,8 +184,8 @@ const Audiopage = () => {
         x = 0;
 
         for (let i = 0; i < bufferLength; i++) {
-          let v = noiseDataArray[i] / 255.0;
-          let y = canvas.height - v * canvas.height
+          const v = noiseDataArray[i] / 255.0;
+          const y = canvas.height - v * canvas.height
 
           if (i === 0) {
             ctx.moveTo(x, y);
@@ -283,9 +284,6 @@ const Audiopage = () => {
     saveAs(blob, 'niveles_ruido.xlsx');
   };
   
-
-  const rgbToString = (color: any, alpha = 0.8) => `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
-
   return (
     <div className="card overflow-y flex flex-column gap-2" style={{ height: 'calc(100vh - 9rem)' }}>
       <h4>Forma de onda de la canción</h4>

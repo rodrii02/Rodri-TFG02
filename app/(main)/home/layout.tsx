@@ -1,6 +1,5 @@
 import Layout from '@/layout/layout';
 import { Metadata } from 'next';
-import { Dialog } from 'primereact/dialog';
 
 interface AppLayoutProps {
     children: React.ReactNode;

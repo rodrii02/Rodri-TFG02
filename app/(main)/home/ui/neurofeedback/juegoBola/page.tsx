@@ -3,11 +3,9 @@
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { classNames } from 'primereact/utils';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const gridSize = 15; // Tamaño del laberinto (15x15)
-const cellSize = 30; // Tamaño de cada celda en píxeles
-const speed = 1; // Velocidad de la bola (en celdas)
 const timeLimit = 60; // Tiempo en segundos
 
 const generateMaze = () => {
@@ -89,7 +87,6 @@ const JuegoLaberintoPage = () => {
     const [active, setActive] = useState(false);
     const [gameOver, setGameOver] = useState(false);
     const [gameWon, setGameWon] = useState(false);
-    const ws = useRef<WebSocket | null>(null);
 
     // 🔹 Generar un laberinto válido
     useEffect(() => {

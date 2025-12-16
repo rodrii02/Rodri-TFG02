@@ -40,7 +40,7 @@ export const WebSocketProvider = ({
       ws.onopen = () => {
         console.log("[WebSocket] Connected");
         setIsConnected(true);
-        setError('none');
+        setError("none");
 
         // 🔄 Actualiza el contexto global
         setMode("websocket");

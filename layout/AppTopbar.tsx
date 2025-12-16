@@ -1,15 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
-import Link from "next/link";
 import { classNames } from "primereact/utils";
 import React, {
   forwardRef,
   useContext,
-  useEffect,
   useImperativeHandle,
   useRef,
 } from "react";
 import { OverlayPanel } from "primereact/overlaypanel";
-import { Tooltip } from "primereact/tooltip"; // Importamos el Tooltip
 import { AppTopbarRef } from "@/types";
 import { LayoutContext } from "./context/layoutcontext";
 import { useNotion } from "@/demo/service/NotionService";
@@ -39,11 +36,6 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
     charging,
     mode,
     stateContext,
-    setMode,
-    setSelectedDeviceContext,
-    setStateContext,
-    setCharging,
-    setBattery,
   } = useConnection();
 
   function logOut() {

@@ -1,4 +1,14 @@
-.loginRight {
+// .loginRight {
+//     flex: 1 1 0;
+//     background: #003865; /* tu primary color */
+//     // clip-path: polygon(0 0, 92% 0%, 100% 100%, 0 100%);
+//     display: flex;
+//     flex-direction: column;
+//     justify-content: center;
+//     color: rgb(226, 219, 219);
+//   }
+
+  .loginRight {
     position: relative; // 👈 importante para que las waves se posicionen dentro
     // // background: linear-gradient(135deg, #001e30, #0560ab);
     background: #001e30;
@@ -67,3 +77,36 @@
     opacity: 0.5;
     animation: waveMoveFast3 5s ease-in-out infinite;
   }
+
+
+
+
+
+
+
+
+
+//   .loginRight {
+//     position: relative; // 👈 importante para que las waves se posicionen dentro
+//     // // background: linear-gradient(135deg, #001e30, #0560ab);
+//     background-position: left center;
+//     background-repeat: no-repeat;
+//     background-size: auto 100%;
+//     background: url("/layout/images/login/peces.gif") left center / auto 100% no-repeat;
+//     color: rgb(226, 219, 219);
+//     image-rendering: -webkit-optimize-contrast;
+// image-rendering: crisp-edges;
+
+//   }
+
+//   .loginRight::before {
+//     content: "";
+//     position: absolute;
+//     inset: 0;
+//     background: linear-gradient(
+//       105deg,
+//       rgba(0, 30, 48, 0.7),
+//       rgba(0, 30, 48, 0.7),
+//     );
+//   }
+  

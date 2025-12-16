@@ -15,6 +15,10 @@ const ModeSelection = () => {
     router.push('/websocket'); // Asegúrate que exista
   };
 
+  const handlePrueba = () => { 
+    router.push('/prueba'); // Asegúrate que exista
+  }
+
   return (
     <div
       className="flex flex-column align-items-center justify-content-center"
@@ -24,6 +28,8 @@ const ModeSelection = () => {
       <div className="flex gap-3">
         <Button label="Neurosity" className="p-button-primary" onClick={handleNeurosity} />
         <Button label="WebSocket" className="p-button-secondary" onClick={handleWebSocket} />
+        <Button label="Prueba" className="p-button-secondary" onClick={handlePrueba} />
+
       </div>
     </div>
   );
