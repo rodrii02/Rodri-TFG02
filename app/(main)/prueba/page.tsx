@@ -8,82 +8,27 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { useState } from "react";
 import { useMessage } from "@/layout/context/messagecontext";
-import { Checkbox } from 'primereact/checkbox';
-        
-const WavesBackground = ({ styles }: { styles: any }) => (
-  <div className={styles.waveContainer} aria-hidden="true">
-    <svg
-      className={`${styles.wave} ${styles.wave1}`}
-      viewBox="0 0 1440 320"
-      preserveAspectRatio="none"
-    >
-      <path
-        fill="#033351"
-        fillOpacity="1"
-        d="M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z"
-      >
-        <animate
-          attributeName="d"
-          dur="10s"
-          repeatCount="indefinite"
-          values="
-          M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
-          M0,240L80,226.7C160,213,320,197,480,202.7C640,208,800,245,960,256C1120,267,1280,245,1360,229.3L1440,213V320H0Z;
-          M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
-        "
-        />
-      </path>
-    </svg>
+import { Checkbox } from "primereact/checkbox";
 
-    <svg
-      className={`${styles.wave} ${styles.wave2}`}
-      viewBox="0 0 1440 320"
-      preserveAspectRatio="none"
-    >
-      <path
-        fill="#004D8B"
-        fillOpacity="1"
-        d="M0,288L80,272C160,256,320,224,480,208C640,192,800,192,960,213.3C1120,235,1280,277,1360,293.3L1440,309V320H0Z"
-      >
-        <animate
-          attributeName="d"
-          dur="10s"
-          repeatCount="indefinite"
-          values="
-          M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
-          M0,240L80,226.7C160,213,320,197,480,202.7C640,208,800,245,960,256C1120,267,1280,245,1360,229.3L1440,213V320H0Z;
-          M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
-        "
-        />
-      </path>
-    </svg>
-
-    <svg
-      className={`${styles.wave} ${styles.wave3}`}
-      viewBox="0 0 1440 320"
-      preserveAspectRatio="none"
-    >
-      <path
-        fill="#043858"
-        fillOpacity="1"
-        d="M0,288L80,272C160,256,320,224,480,224C640,224,800,256,960,261.3C1120,267,1280,245,1360,234.7L1440,224V320H0Z"
-      >
-        <animate
-          attributeName="d"
-          dur="10s"
-          repeatCount="indefinite"
-          values="
-          M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
-          M0,240L80,226.7C160,213,320,197,480,202.7C640,208,800,245,960,256C1120,267,1280,245,1360,229.3L1440,213V320H0Z;
-          M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
-        "
-        />
-      </path>
-    </svg>
+const BackgroundLayout = ({
+  styles,
+  children,
+}: {
+  styles: any;
+  children: React.ReactNode;
+}) => (
+  <div className={styles.page}>
+    <div className={styles.background} aria-hidden="true">
+      <WavesBackground styles={styles} />
+      {/* <video autoPlay loop muted playsInline className={styles.bgVideo}>
+        <source src="/layout/videos/cerebroT.mov" type="video/mp4" />
+      </video> */}
+    </div>
+    <div className={styles.content}>{children}</div>
   </div>
 );
 
-const VisualPanel = ({
+const VisualPanel2 = ({
   styles,
   title,
   description,
@@ -96,32 +41,146 @@ const VisualPanel = ({
   buttonLabel: string;
   onButtonClick: () => void;
 }) => (
-  <div
-    className={`${styles.loginRight} col-12 md:col-6 p-6 text-center flex align-items-center justify-content-center`}
-  >
-    <WavesBackground styles={styles} />
+  <section className={styles.visualPanel}>
+    <div className="flex justify-content-center mb-2">
+      <label className=" block text-6xl font-bold text-center text-white">
+        {title}
+      </label>
+    </div>
 
-    <div className={styles.loginRightContent}>
-      <div className="flex justify-content-center mb-2">
-        <label className="text-blue-50 block text-6xl font-bold text-center">
-          {title}
-        </label>
-      </div>
+    <p className="mb-4 text-center text-primary text-white	">{description}</p>
 
-      <p className="mb-4 text-center">{description}</p>
+    <div className="flex justify-content-center">
+      <Button
+        label={buttonLabel}
+        className="p-button-secondary p-button-rounded"
+        icon="pi pi-arrow-right"
+        iconPos="right"
+        onClick={onButtonClick}
+      />
+    </div>
+  </section>
+);
 
-      <div className="flex justify-content-center">
-        <Button
-          label={buttonLabel}
-          className="p-button-secondary p-button-rounded"
-          icon="pi pi-arrow-right"
-          iconPos="right"
-          onClick={onButtonClick}
-        />
+const WavesBackground = ({ styles }: { styles: any }) => (
+  // <div className={styles.waveContainer} aria-hidden="true">
+  //   <svg
+  //     className={`${styles.wave} ${styles.wave1}`}
+  //     viewBox="0 0 1440 320"
+  //     preserveAspectRatio="none"
+  //   >
+  //     <path
+  //       fill="#033351"
+  //       fillOpacity="1"
+  //       d="M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z"
+  //     >
+  //       <animate
+  //         attributeName="d"
+  //         dur="10s"
+  //         repeatCount="indefinite"
+  //         values="
+  //         M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
+  //         M0,240L80,226.7C160,213,320,197,480,202.7C640,208,800,245,960,256C1120,267,1280,245,1360,229.3L1440,213V320H0Z;
+  //         M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
+  //       "
+  //       />
+  //     </path>
+  //   </svg>
+
+  //   <svg
+  //     className={`${styles.wave} ${styles.wave2}`}
+  //     viewBox="0 0 1440 320"
+  //     preserveAspectRatio="none"
+  //   >
+  //     <path
+  //       fill="#004D8B"
+  //       fillOpacity="1"
+  //       d="M0,288L80,272C160,256,320,224,480,208C640,192,800,192,960,213.3C1120,235,1280,277,1360,293.3L1440,309V320H0Z"
+  //     >
+  //       <animate
+  //         attributeName="d"
+  //         dur="10s"
+  //         repeatCount="indefinite"
+  //         values="
+  //         M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
+  //         M0,240L80,226.7C160,213,320,197,480,202.7C640,208,800,245,960,256C1120,267,1280,245,1360,229.3L1440,213V320H0Z;
+  //         M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
+  //       "
+  //       />
+  //     </path>
+  //   </svg>
+
+  //   <svg
+  //     className={`${styles.wave} ${styles.wave3}`}
+  //     viewBox="0 0 1440 320"
+  //     preserveAspectRatio="none"
+  //   >
+  //     <path
+  //       fill="#043858"
+  //       fillOpacity="1"
+  //       d="M0,288L80,272C160,256,320,224,480,224C640,224,800,256,960,261.3C1120,267,1280,245,1360,234.7L1440,224V320H0Z"
+  //     >
+  //       <animate
+  //         attributeName="d"
+  //         dur="10s"
+  //         repeatCount="indefinite"
+  //         values="
+  //         M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
+  //         M0,240L80,226.7C160,213,320,197,480,202.7C640,208,800,245,960,256C1120,267,1280,245,1360,229.3L1440,213V320H0Z;
+  //         M0,256L80,266.7C160,277,320,299,480,282.7C640,267,800,213,960,197.3C1120,181,1280,203,1360,213.3L1440,224V320H0Z;
+  //       "
+  //       />
+  //     </path>
+  //   </svg>
+  // </div>
+  <div></div>
+);
+
+const VisualPanel = ({
+  styles,
+  side = "right",
+  title,
+  description,
+  buttonLabel,
+  onButtonClick,
+}: {
+  styles: any;
+  side?: "left" | "right";
+  title: string;
+  description: string;
+  buttonLabel: string;
+  onButtonClick: () => void;
+}) => {
+  const panelClass = side === "left" ? styles.loginLeft : styles.loginRight;
+
+  return (
+    <div
+      className={`${panelClass} col-12 md:col-6 p-6 text-center flex align-items-center justify-content-center`}
+    >
+      <WavesBackground styles={styles} />
+
+      <div className={styles.loginRightContent}>
+        <div className="flex justify-content-center mb-2">
+          <label className="text-blue-50 block text-6xl font-bold text-center">
+            {title}
+          </label>
+        </div>
+
+        <p className="mb-4 text-center">{description}</p>
+
+        <div className="flex justify-content-center">
+          <Button
+            label={buttonLabel}
+            className="p-button-secondary p-button-rounded"
+            icon="pi pi-arrow-right"
+            iconPos="right"
+            onClick={onButtonClick}
+          />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const WebSocketForm = ({
   webSocketUrl,
@@ -138,7 +197,7 @@ const WebSocketForm = ({
   onTest: () => void;
   onConnect: () => void;
 }) => (
-  <div className="col-12 md:col-6 p-6 text-center md:text-left flex align-items-center">
+  <div className="col-12 md:col-6 p-6 text-center md:text-left flex align-items-center bg-white border-round-xs shadow-2">
     <section className="w-full flex flex-column align-items-center">
       <label className="block text-4xl font-bold text-center">
         Configurar WebSocket
@@ -160,6 +219,7 @@ const WebSocketForm = ({
             label="Probar conexión"
             className="p-button-secondary p-button-outlined"
             onClick={onTest}
+            disabled={webSocketUrl.trim() === ""}
           />
           <Button
             label="Conectar"
@@ -204,7 +264,7 @@ const NeurosityLoginForm = ({
   isLoading?: boolean;
   error?: string | null;
 }) => (
-  <div className="col-12 md:col-6 p-6 flex align-items-center justify-content-center">
+  <div className="col-12 md:col-6 p-6 flex align-items-center justify-content-center bg-white border-round-xs shadow-2">
     <section className="w-full flex flex-column align-items-center">
       <div>
         <div
@@ -364,6 +424,7 @@ const WebSocketConfig = () => {
     mode === "websocket" ? (
       <VisualPanel
         styles={styles}
+        side="left"
         title={c.title}
         description={c.description}
         buttonLabel={c.buttonLabel}
@@ -396,6 +457,7 @@ const WebSocketConfig = () => {
     ) : (
       <VisualPanel
         styles={styles}
+        side="right"
         title={c.title}
         description={c.description}
         buttonLabel={c.buttonLabel}
@@ -404,12 +466,60 @@ const WebSocketConfig = () => {
     );
 
   return (
-    <div style={{ height: "100vh" }}>
-      <div className="grid grid-nogutter text-800 w-full h-full">
-        {left}
-        {right}
+    // <div style={{ height: "100vh" }}>
+    //   <div className="grid grid-nogutter text-800 w-full h-full">
+    //     {left}
+    //     {right}
+    //   </div>
+    // </div>
+    <BackgroundLayout styles={styles}>
+      <div className="grid grid-nogutter w-full h-full">
+        {mode === "websocket" ? (
+          <>
+            <div className="col-12 md:col-6 p-6 flex align-items-center justify-content-center">
+              <VisualPanel2
+                styles={styles}
+                title={copy.websocket.title}
+                description={copy.websocket.description}
+                buttonLabel={copy.websocket.buttonLabel}
+                onButtonClick={() => setMode(copy.websocket.next)}
+              />
+            </div>
+
+            <WebSocketForm
+              webSocketUrl={webSocketUrl}
+              setWebSocketUrl={setWebSocketUrl}
+              isConnected={!!isConnected}
+              error={error}
+              onTest={handleTestConnection}
+              onConnect={handleConnect}
+            />
+          </>
+        ) : (
+          <>
+            <NeurosityLoginForm
+              email={email}
+              setEmail={setEmail}
+              password={password}
+              setPassword={setPassword}
+              onLogin={login}
+              checked={checked}
+              setChecked={setChecked}
+            />
+
+            <div className="col-12 md:col-6 p-6 flex align-items-center justify-content-center">
+              <VisualPanel2
+                styles={styles}
+                title={copy.neurosity.title}
+                description={copy.neurosity.description}
+                buttonLabel={copy.neurosity.buttonLabel}
+                onButtonClick={() => setMode(copy.neurosity.next)}
+              />
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </BackgroundLayout>
   );
 };
 

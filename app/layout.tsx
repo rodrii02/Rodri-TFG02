@@ -20,7 +20,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head>
         <link
           id="theme-css"
-          href={`/themes/lara-light-blue/theme.css`}
+          href={`/themes/lara-light-blue/theme2.css`}
           rel="stylesheet"
         ></link>
       </head>
