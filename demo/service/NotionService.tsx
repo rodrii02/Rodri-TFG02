@@ -189,6 +189,7 @@
 import React, { useContext, createContext } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useConnection } from "./ConnectionContext";
+import "regenerator-runtime/runtime";
 
 // ❌ ELIMINAMOS ESTA LÍNEA
 // import { Notion } from "@neurosity/notion";

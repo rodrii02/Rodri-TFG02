@@ -20,7 +20,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head>
         <link
           id="theme-css"
-          href={`/themes/lara-light-blue/theme2.css`}
+          href={`/themes/lara-light-blue/theme.css`}
           rel="stylesheet"
         ></link>
       </head>
@@ -29,11 +29,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <LayoutProvider>
             <MessageProvider>
               <ConnectionProvider>
-                <WebSocketProvider>
                 <ProvideNotion>
+                <WebSocketProvider>
                   <DeviceDialogProvider>{children}</DeviceDialogProvider>
-                </ProvideNotion>
                 </WebSocketProvider>
+                </ProvideNotion>
               </ConnectionProvider>
             </MessageProvider>
           </LayoutProvider>

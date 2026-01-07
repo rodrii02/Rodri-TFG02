@@ -16,7 +16,7 @@ const AppMenu = () => {
             items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/home' }]
         },
         {
-            label: 'Examples',
+            label: 'Informacion Actual',
             items: [
                 // { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/home/ui/button', class: 'rotated-icon' },
                 { label: 'Grafica', icon: 'pi pi-fw pi-chart-bar', to: '/home/ui/charts' },

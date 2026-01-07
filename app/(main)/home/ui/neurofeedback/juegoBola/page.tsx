@@ -1,5 +1,6 @@
 'use client';
 
+import { useWebSocket } from '@/demo/service/WebSocketService';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { classNames } from 'primereact/utils';
@@ -88,6 +89,8 @@ const JuegoLaberintoPage = () => {
     const [gameOver, setGameOver] = useState(false);
     const [gameWon, setGameWon] = useState(false);
 
+    const { lastMessage } = useWebSocket();
+
     // 🔹 Generar un laberinto válido
     useEffect(() => {
         let newMaze;
@@ -137,26 +140,39 @@ const JuegoLaberintoPage = () => {
         }
     };
 
-    useEffect(() => {
-        const ws = new WebSocket("ws://localhost:8008/ws");
+    // useEffect(() => {
+    //     const ws = new WebSocket("ws://localhost:8008/ws");
     
-        ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            if (message.marker) {
-                console.log("📡 WebSocket recibió:", message.marker);
+    //     ws.onmessage = (event) => {
+    //         const message = JSON.parse(event.data);
+    //         if (message.marker) {
+    //             console.log("📡 WebSocket recibió:", message.marker);
 
-                moveBallFromMessage(message.marker);
-            }
-        };
+    //             moveBallFromMessage(message.marker);
+    //         }
+    //     };
     
-        ws.onclose = (event) => {
-            console.log("🔴 WebSocket desconectado", event);
-            console.log("🔴 Código de cierre:", event.code);
-            console.log("🔴 Razón:", event.reason);
-        };        
+    //     ws.onclose = (event) => {
+    //         console.log("🔴 WebSocket desconectado", event);
+    //         console.log("🔴 Código de cierre:", event.code);
+    //         console.log("🔴 Razón:", event.reason);
+    //     };        
     
-        return () => ws.close();
-    }, [ball, active]); // ✅ Agrega ball para asegurarse de que se actualiza correctamente    
+    //     return () => ws.close();
+    // }, [ball, active]); // ✅ Agrega ball para asegurarse de que se actualiza correctamente   
+    useEffect(() => {
+        if (!active || gameOver || gameWon || !lastMessage) return;
+      
+        try {
+          const message = JSON.parse(lastMessage);
+          if (message.marker) {
+            console.log("📡 WebSocket recibió:", message.marker);
+            moveBallFromMessage(message.marker);
+          }
+        } catch (e) {
+          console.error("❌ Error parsing message:", lastMessage);
+        }
+      }, [lastMessage, active, gameOver, gameWon]); 
 
     //  Detectar teclas de movimiento
     useEffect(() => {
@@ -200,7 +216,7 @@ const JuegoLaberintoPage = () => {
     return (
         <div className="card overflow-y" style={{ height: 'calc(100vh - 9rem)' }}>
 
-            <div className="flex justify-content-center align-items-center mt-4" style={{ width: '100%' }}>
+            <div className="flex justify-content-center align-items-center mt-1" style={{ width: '100%' }}>
                 <div style={{
                     position: 'relative',
                     width: 'min(90vw, 500px)', //  Máximo 500px, pero se ajusta hasta el 90% del ancho de la pantalla

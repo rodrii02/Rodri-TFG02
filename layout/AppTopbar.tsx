@@ -15,6 +15,7 @@ import { useDeviceDialog } from "./context/devicecontext";
 import { Button } from "primereact/button";
 import { useConnection } from "@/demo/service/ConnectionContext";
 import { useWebSocket } from "@/demo/service/WebSocketService";
+import "regenerator-runtime/runtime";
 
 const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
   const { layoutConfig, layoutState, onMenuToggle, showProfileSidebar } =
@@ -42,24 +43,24 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
     if (mode === "crown") {
       // 🔒 Si es Crown, cerrar sesión de Notion
       logoutNotion().then(() => {
-        router.push("/login");
+        router.push("/");
       });
     } else {
       disconnect()
-      router.push("/websocket");
+      router.push("/");
     }
   }
 
-  const handleChangeMode = async () => {
-    if (mode === "crown") {
-      await logoutNotion(); // 🔒 Si es Crown, cerrar sesión de Notion
-    }
-    else {
-      disconnect();
-    }
+  // const handleChangeMode = async () => {
+  //   if (mode === "crown") {
+  //     await logoutNotion(); // 🔒 Si es Crown, cerrar sesión de Notion
+  //   }
+  //   else {
+  //     disconnect();
+  //   }
     
-    router.push("/");
-  };
+  //   router.push("/");
+  // };
 
   const cloudColor = stateContext === "online" ? "limegreen" : "crimson";
 
@@ -114,11 +115,11 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
           "layout-topbar-menu-mobile-active": layoutState.profileSidebarVisible,
         })}
       >
-        <Button
+        {/* <Button
           icon="pi pi-sign-out"
           label="Cambiar Modo"
           onClick={handleChangeMode}
-        />
+        /> */}
 
         <button
           type="button"

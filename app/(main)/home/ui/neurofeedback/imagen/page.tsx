@@ -11,6 +11,7 @@ import { LayoutContext } from '@/layout/context/layoutcontext';
 import styles from './index.module.scss';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
+import { useWebSocket } from '@/demo/service/WebSocketService';
 
 const ImagePage = () => {
     const { layoutState } = useContext(LayoutContext);
@@ -22,6 +23,9 @@ const ImagePage = () => {
 
     const blurHistoryRef = useRef<number[]>([]);
     const [blurHistory, setBlurHistory] = useState<number[]>([]);
+
+    const { lastMessage, isConnected } = useWebSocket();
+
 
     const toast = useRef<Toast>(null);
     
@@ -51,12 +55,28 @@ const ImagePage = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useInterval(() => {
-        const random = Math.random() * 4;
-        setBlurLevel(random);
-        blurHistoryRef.current.push(random); // Guardar sin renderizar
-        setSeconds((prev) => prev + 1);
-    }, 1000, active);
+    // useInterval(() => {
+    //     const random = Math.random() * 4;
+    //     setBlurLevel(random);
+    //     blurHistoryRef.current.push(random); // Guardar sin renderizar
+    //     setSeconds((prev) => prev + 1);
+    // }, 1000, active);
+
+    useEffect(() => {
+        if (!active || !lastMessage) return;
+    
+        try {
+            const data = JSON.parse(lastMessage);
+            if (data.concentracion) {
+                // const value = Math.min(Math.max(data.concentracion, 0), 4); // Clamp 0-4
+                setBlurLevel(data.concentracion);
+                blurHistoryRef.current.push(data.concentracion); // Guardar en ref sin re-render
+                setSeconds((prev) => prev + 1);
+            }
+        } catch (error) {
+            console.error('❌ Error procesando mensaje WS:', error);
+        }
+    }, [lastMessage, active]);
 
     const toggleSession = () => {
         setActive(!active);

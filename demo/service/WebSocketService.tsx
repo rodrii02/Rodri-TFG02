@@ -1,4 +1,5 @@
-import { useRef, useState, createContext, useContext } from "react";
+'use client';
+import { useRef, useState, createContext, useContext, useEffect } from "react";
 import { useConnection } from "./ConnectionContext";
 
 export const WebSocketContext = createContext<any>(null);
@@ -54,7 +55,7 @@ export const WebSocketProvider = ({
       };
 
       ws.onerror = (err) => {
-        console.error("[WebSocket] Error:", err);
+        console.log("[WebSocket] Error:", err);
         setError("WebSocket connection error");
         disconnect();
       };
@@ -62,19 +63,23 @@ export const WebSocketProvider = ({
       ws.onclose = () => {
         console.log("[WebSocket] Disconnected");
         if (isDesconnected.current) {
-          setError(null);
+          setError((prev) => prev ?? "WebSocket connection error");
         } else {
           setError("WebSocket Cerrado inesperadamente");
         }
         disconnect();
       };
     } catch (err: any) {
-      console.error("[WebSocket] Connection exception:", err.message);
+      console.log("[WebSocket] Connection exception:", err.message);
       setError(err.message);
 
       setStateContext("offline");
     }
   };
+
+  useEffect(() => {
+    console.log("Nuevo valor de error:", error);
+  }, [error]);
 
   const disconnect = () => {
     // 👇 A partir de aquí, ningún handler de este socket debería hacer nada
@@ -107,3 +112,5 @@ export const WebSocketProvider = ({
     </WebSocketContext.Provider>
   );
 };
+
+

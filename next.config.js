@@ -8,10 +8,14 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    turbopack: {
-      root: __dirname,  // 👈 fuerza a Next a usar ESTA carpeta como root
+  experimental: {
+    css: {
+      lightningcss: false, // 🔧 desactiva Lightning CSS para evitar errores con light-dark()
     },
-  };
-  
-  module.exports = nextConfig;
-  
+  },
+  turbopack: {
+    root: __dirname,
+  },
+};
+
+module.exports = nextConfig;
