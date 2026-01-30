@@ -1,6 +1,6 @@
 'use client';
 
-import { useWebSocket } from '@/demo/service/WebSocketService';
+import { useWebSocket } from '@/service/WebSocketService';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { classNames } from 'primereact/utils';

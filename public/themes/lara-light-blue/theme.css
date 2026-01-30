@@ -14,6 +14,8 @@
   --text-color: #4b5563;
   --text-color-secondary: #6b7280;
   --primary-color: #003865;
+  --second-color: #1b5a8c;
+
   --primary-color-text: #ffffff;
   --focus-ring: 0 0 0 0.2rem #003865;
   --highlight-bg: var(--primary-light-hover);

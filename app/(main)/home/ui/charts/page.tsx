@@ -98,7 +98,7 @@ import {
   ChartOptions,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import { useWebSocket } from "@/demo/service/WebSocketService";
+import { useWebSocket } from "@/service/WebSocketService";
 import "regenerator-runtime/runtime";
 
 ChartJS.register(

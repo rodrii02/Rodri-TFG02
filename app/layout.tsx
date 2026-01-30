@@ -6,10 +6,10 @@ import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import '../styles/layout/layout.scss';
 import { MessageProvider } from '@/layout/context/messagecontext';
-import { ConnectionProvider } from '@/demo/service/ConnectionContext';
-import { ProvideNotion } from '@/demo/service/NotionService';
-import { WebSocketProvider } from '@/demo/service/WebSocketService';
-import { DeviceDialogProvider } from '@/layout/context/devicecontext';
+import { ConnectionProvider } from '@/service/ConnectionContext';
+import { ProvideNotion } from '@/service/NotionService';
+import { WebSocketProvider } from '@/service/WebSocketService';
+import { DeviceDialogProvider } from '@/service/devicecontext';
 interface RootLayoutProps {
   children: React.ReactNode;
 }

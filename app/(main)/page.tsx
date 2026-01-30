@@ -1,8 +1,8 @@
 "use client";
 
-import { useNotion } from "@/demo/service/NotionService";
+import { useNotion } from "@/service/NotionService";
 import styles from "./index.module.scss";
-import { useWebSocket } from "@/demo/service/WebSocketService";
+import { useWebSocket } from "@/service/WebSocketService";
 import { useRouter } from "next/navigation";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";

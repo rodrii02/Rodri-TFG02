@@ -9,12 +9,12 @@ import React, {
 import { OverlayPanel } from "primereact/overlaypanel";
 import { AppTopbarRef } from "@/types";
 import { LayoutContext } from "./context/layoutcontext";
-import { useNotion } from "@/demo/service/NotionService";
+import { useNotion } from "@/service/NotionService";
 import { useRouter } from "next/navigation";
-import { useDeviceDialog } from "./context/devicecontext";
+import { useDeviceDialog } from "../service/devicecontext";
 import { Button } from "primereact/button";
-import { useConnection } from "@/demo/service/ConnectionContext";
-import { useWebSocket } from "@/demo/service/WebSocketService";
+import { useConnection } from "@/service/ConnectionContext";
+import { useWebSocket } from "@/service/WebSocketService";
 import "regenerator-runtime/runtime";
 
 const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {

@@ -1,7 +1,7 @@
 'use client'
-import { useNotion } from "@/demo/service/NotionService";
+import { useNotion } from "@/service/NotionService";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { useMessage } from "./messagecontext";
+import { useMessage } from "../layout/context/messagecontext";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
