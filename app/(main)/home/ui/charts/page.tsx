@@ -98,7 +98,7 @@ import {
   ChartOptions,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import { useWebSocket } from "@/service/WebSocketService";
+import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
 import "regenerator-runtime/runtime";
 
 ChartJS.register(
@@ -118,7 +118,7 @@ type Direction = (typeof DIRECTIONS)[number];
 const DIRECTION_LABELS: string[] = [...DIRECTIONS];
 
 export default function HorizontalGraphWebSocketPage() {
-  const { lastMessage, isConnected, connect } = useWebSocket();
+  const { lastMessage, isConnected, connectWebSocket } = useUnifiedConnection();
 
   const [points, setPoints] = useState<{ x: number; y: Direction }[]>([]);
   const [counter, setCounter] = useState(1);
@@ -130,9 +130,9 @@ export default function HorizontalGraphWebSocketPage() {
   // 🔌 Conectar WebSocket
   useEffect(() => {
     if (!isConnected) {
-      connect("ws://localhost:8001/ws");
+      void connectWebSocket("ws://localhost:8001/ws");
     }
-  }, [isConnected, connect]);
+  }, [connectWebSocket, isConnected]);
 
   // 📡 Procesar mensajes
   useEffect(() => {

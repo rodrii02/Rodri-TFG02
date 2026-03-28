@@ -1,15 +1,20 @@
 'use client'
-import { useNotion } from "@/service/NotionService";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import { useMessage } from "../layout/context/messagecontext";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
+import { useUnifiedConnection } from "./UnifiedConnectionService";
 
 const DeviceDialogContext= createContext<any>(null)
 
 export const DeviceDialogProvider = ({ children }: { children: React.ReactNode }) => {
-    const { notion, lastSelectedDeviceId } = useNotion();
+    const {
+        notionClient,
+        getCrownDevices,
+        selectCrownDevice,
+        lastSelectedDeviceId
+    } = useUnifiedConnection();
     const [visible, setVisible] = useState(false);
     const [devices, setDevices] = useState<any[]>([]);
     const [draftDeviceId, setDraftDeviceId] = useState('');
@@ -18,14 +23,13 @@ export const DeviceDialogProvider = ({ children }: { children: React.ReactNode }
 
     const showDeviceDialog = useCallback(() => {
         console.log("ENTRA EN DEVICE SELEC")
-        if (!notion) {
+        if (!notionClient) {
             console.error("Notion no está definido");
             return;
         }
 
         setVisible(true);
-        notion
-            .getDevices()
+        getCrownDevices()
             .then((devices: any) => {
                 setDevices(devices);
                 if (devices.length) {
@@ -39,16 +43,13 @@ export const DeviceDialogProvider = ({ children }: { children: React.ReactNode }
                     life: 2000,
                 });
             });
-    }, [notion, lastSelectedDeviceId, showMessage]);
+    }, [getCrownDevices, lastSelectedDeviceId, notionClient, showMessage]);
 
     const onSubmit = (event: any) => {
         event.preventDefault();
         setSubmitting(true);
 
-        notion
-            .selectDevice((devices: any) =>
-                devices.find((device: any) => device.deviceId === draftDeviceId)
-            )
+        selectCrownDevice(draftDeviceId)
             .then(() => {
                 showMessage({
                     severity: 'success',

@@ -11,7 +11,7 @@ import { LayoutContext } from "@/layout/context/layoutcontext";
 import styles from "./index.module.scss";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Toast } from "primereact/toast";
-import { useWebSocket } from "@/service/WebSocketService";
+import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
 
 const ImagePage = () => {
   const { layoutState } = useContext(LayoutContext);
@@ -24,7 +24,7 @@ const ImagePage = () => {
   const blurHistoryRef = useRef<number[]>([]);
   const [blurHistory, setBlurHistory] = useState<number[]>([]);
 
-  const { lastMessage, isConnected } = useWebSocket();
+  const { lastMessage } = useUnifiedConnection();
 
   const toast = useRef<Toast>(null);
 

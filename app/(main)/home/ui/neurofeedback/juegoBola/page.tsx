@@ -1,6 +1,6 @@
 'use client';
 
-import { useWebSocket } from '@/service/WebSocketService';
+import { useUnifiedConnection } from '@/service/UnifiedConnectionService';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { classNames } from 'primereact/utils';
@@ -89,7 +89,7 @@ const JuegoLaberintoPage = () => {
     const [gameOver, setGameOver] = useState(false);
     const [gameWon, setGameWon] = useState(false);
 
-    const { lastMessage } = useWebSocket();
+    const { lastMessage } = useUnifiedConnection();
 
     // 🔹 Generar un laberinto válido
     useEffect(() => {

@@ -7,8 +7,6 @@ import 'primeicons/primeicons.css';
 import '../styles/layout/layout.scss';
 import { MessageProvider } from '@/layout/context/messagecontext';
 import { ConnectionProvider } from '@/service/ConnectionContext';
-import { ProvideNotion } from '@/service/NotionService';
-import { WebSocketProvider } from '@/service/WebSocketService';
 import { DeviceDialogProvider } from '@/service/devicecontext';
 interface RootLayoutProps {
   children: React.ReactNode;
@@ -29,11 +27,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <LayoutProvider>
             <MessageProvider>
               <ConnectionProvider>
-                <ProvideNotion>
-                <WebSocketProvider>
-                  <DeviceDialogProvider>{children}</DeviceDialogProvider>
-                </WebSocketProvider>
-                </ProvideNotion>
+                <DeviceDialogProvider>{children}</DeviceDialogProvider>
               </ConnectionProvider>
             </MessageProvider>
           </LayoutProvider>

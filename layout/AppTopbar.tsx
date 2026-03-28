@@ -1,3 +1,6 @@
+"use client";
+import "regenerator-runtime/runtime";
+
 /* eslint-disable @next/next/no-img-element */
 import { classNames } from "primereact/utils";
 import React, {
@@ -7,63 +10,42 @@ import React, {
   useRef,
 } from "react";
 import { OverlayPanel } from "primereact/overlaypanel";
-import { AppTopbarRef } from "@/types";
 import { LayoutContext } from "./context/layoutcontext";
-import { useNotion } from "@/service/NotionService";
 import { useRouter } from "next/navigation";
-import { useDeviceDialog } from "../service/devicecontext";
-import { Button } from "primereact/button";
-import { useConnection } from "@/service/ConnectionContext";
-import { useWebSocket } from "@/service/WebSocketService";
-import "regenerator-runtime/runtime";
+import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
+import { useDeviceDialog } from "@/service/devicecontext";
 
-const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
-  const { layoutConfig, layoutState, onMenuToggle, showProfileSidebar } =
+const AppTopbar = forwardRef<any>((_, ref) => {
+  const { layoutState, onMenuToggle, showProfileSidebar } =
     useContext(LayoutContext);
   const menubuttonRef = useRef(null);
   const topbarmenuRef = useRef(null);
   const topbarmenubuttonRef = useRef(null);
-  
-  const { logoutNotion } = useNotion(); // Obtener el estado del dispositivo
-  const { disconnect } = useWebSocket();
-
-  const overlayPanelRef = useRef<OverlayPanel>(null); // Referencia para el OverlayPanel
-  const { showDeviceDialog } = useDeviceDialog();
-  const router = useRouter();
 
   const {
-    selectedDeviceContext,
-    battery,
-    charging,
-    mode,
-    stateContext,
-  } = useConnection();
+    info,
+    disconnectWebSocket,
+    logoutCrown,
+  } = useUnifiedConnection();
+  const { showDeviceDialog } = useDeviceDialog();
 
+  const overlayPanelRef = useRef<OverlayPanel>(null); // Referencia para el OverlayPanel
+  // const { showDeviceDialog } = useDeviceDialog();
+  const router = useRouter();
+
+  const cloudColor = info.stateContext === "online" ? "limegreen" : "crimson";
+  
   function logOut() {
-    if (mode === "crown") {
+    if (info.mode === "crown") {
       // 🔒 Si es Crown, cerrar sesión de Notion
-      logoutNotion().then(() => {
+      logoutCrown().then(() => {
         router.push("/");
       });
     } else {
-      disconnect()
+      disconnectWebSocket()
       router.push("/");
     }
   }
-
-  // const handleChangeMode = async () => {
-  //   if (mode === "crown") {
-  //     await logoutNotion(); // 🔒 Si es Crown, cerrar sesión de Notion
-  //   }
-  //   else {
-  //     disconnect();
-  //   }
-    
-  //   router.push("/");
-  // };
-
-  const cloudColor = stateContext === "online" ? "limegreen" : "crimson";
-
   const handleMouseEnter = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (overlayPanelRef.current) {
       overlayPanelRef.current.show(event, event.currentTarget); // Mostrar el OverlayPanel
@@ -136,45 +118,45 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
           <div className="flex flex-column gap-2">
             <div>
               <h5 className="mb-0">
-                {selectedDeviceContext ? selectedDeviceContext : "Unknown"}
+                {info.selectedDeviceContext ? info.selectedDeviceContext : "Unknown"}
               </h5>
             </div>
             <div className="flex align-items-center gap-2">
               <i className="pi pi-cloud" style={{ color: cloudColor }} />
               <span>
-                {stateContext === "online" ? "Online" : "Offline"}
-                {charging ? " (Charging)" : ""}
+                {info.stateContext === "online" ? "Online" : "Offline"}
+                {info.charging ? " (Charging)" : ""}
               </span>
             </div>
-            {mode === "crown" && (
+            {info.mode === "crown" && (
               <div className="flex align-items-center gap-2">
                 <i className="pi pi-bolt" />
                 <span>
-                  {charging ? " (Charging)" : ""}
-                  {battery ? `${battery}%` : ""}
+                  {info.charging ? " (Charging)" : ""}
+                  {info.battery ? `${info.battery}%` : ""}
                 </span>
               </div>
             )}
           </div>
         </OverlayPanel>
 
-        {mode === "crown" && (
+        {info.mode === "crown" && (
           <button
             type="button"
             className="p-link layout-topbar-button"
             onClick={showDeviceDialog}
           >
             <i className="pi pi-cog"></i>
-            <span>Info</span>
+            <span>{info.selectedDeviceContext ?? "Dispositivo"}</span>
           </button>
         )}
 
         <button
           type="button"
           className="p-link layout-topbar-button"
-          onClick={logOut}
-        >
-          <i className="pi pi-sign-out"></i>
+          onClick={logOut} 
+        > 
+        <i className="pi pi-sign-out"></i>
           <span>Log out</span>
         </button>
       </div>

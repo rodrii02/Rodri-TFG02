@@ -9,7 +9,7 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Chart } from "primereact/chart";
 import styles from "./index.module.scss";
-import { useWebSocket } from "@/service/WebSocketService";
+import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
 
 const VideoPage = () => {
   const { layoutState } = useContext(LayoutContext);
@@ -21,7 +21,7 @@ const VideoPage = () => {
   const blurHistoryRef = useRef<number[]>([]);
   const [blurHistory, setBlurHistory] = useState<number[]>([]);
 
-  const { lastMessage, isConnected } = useWebSocket();
+  const { lastMessage } = useUnifiedConnection();
 
   useEffect(() => {
     //Solo deben usarse dentro de useEffect o tras comprobar que estás en el cliente.

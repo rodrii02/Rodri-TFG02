@@ -1,16 +1,15 @@
 "use client";
 
-import { useNotion } from "@/service/NotionService";
 import styles from "./index.module.scss";
-import { useWebSocket } from "@/service/WebSocketService";
 import { useRouter } from "next/navigation";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMessage } from "@/layout/context/messagecontext";
 import { Checkbox } from "primereact/checkbox";
 import Link from "next/dist/client/link";
 import "regenerator-runtime/runtime";
+import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
 
 const BackgroundLayout = ({
   styles,
@@ -268,18 +267,27 @@ const copy = {
 
 const WebSocketConfig = () => {
   const router = useRouter();
-  const [webSocketUrl, setWebSocketUrl] = useState("");
-  const [mode, setMode] = useState<"websocket" | "neurosity">("websocket");
-
-  const { connect, isConnected, error } = useWebSocket();
-  const { notion } = useNotion();
-
   const { showMessage } = useMessage();
 
+  //Estado para websocket
+  const [webSocketUrl, setWebSocketUrl] = useState("");
+
+  //Estado para crown
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [checked, setChecked] = useState(false);
-  console.log("🧩 useWebSocket devuelve:", { connect, isConnected, error });
+
+  //   const { connectWebSocket, notion, isConnected, error, logoutNotion } = useConnection();
+
+  const [mode, setMode] = useState<"crown" | "websocket">("websocket");
+
+  const {
+    info,
+    error,
+    connectWebSocket,
+    loginCrown,
+    logoutCrown,
+  } = useUnifiedConnection();
 
   const handleTestConnection = () => {
     if (
@@ -290,11 +298,11 @@ const WebSocketConfig = () => {
       return;
     }
 
-    connect(webSocketUrl);
+    connectWebSocket(webSocketUrl);
   };
 
   const handleConnect = () => {
-    if (isConnected) {
+    if (info.stateContext === "online") {
       router.push("/home");
     }
   };
@@ -302,18 +310,8 @@ const WebSocketConfig = () => {
   const login = async (e?: React.MouseEvent | React.FormEvent) => {
     e?.preventDefault();
 
-    if (!notion) {
-      showMessage({
-        severity: "warn",
-        summary: "Inicializando conexión",
-        detail: "Espera un momento y vuelve a intentar.",
-        life: 2000,
-      });
-      return;
-    }
-
     try {
-      await notion.login({ email, password });
+      await loginCrown(email, password);
 
       showMessage({
         severity: "success",
@@ -334,10 +332,6 @@ const WebSocketConfig = () => {
     }
   };
 
-  useEffect(() => {
-    console.log("Nuevo valor de error:", error);
-  }, [error]);
-
   return (
     <BackgroundLayout styles={styles}>
       <div
@@ -353,14 +347,20 @@ const WebSocketConfig = () => {
             buttonLabel={copy.websocket.buttonLabel}
             buttonIcon="pi pi-arrow-left"
             positionbuttonIcon="left"
-            onButtonClick={() => setMode(copy.websocket.next)}
+            onButtonClick={() => setMode("crown")}
           />
+
+          {/* <Button
+            label="Conectar Sesión"
+            className="p-button-primary w-full"
+            onClick={logoutCrown}
+          ></Button> */}
         </div>
 
         <WebSocketForm
           webSocketUrl={webSocketUrl}
           setWebSocketUrl={setWebSocketUrl}
-          isConnected={!!isConnected}
+          isConnected={!!info && info.stateContext === "online"}
           error={error}
           onTest={handleTestConnection}
           onConnect={handleConnect}
@@ -369,7 +369,7 @@ const WebSocketConfig = () => {
 
       <div
         className={`grid grid-nogutter w-full h-full ${styles.formItem} ${
-          mode === "neurosity" ? styles.visible : styles.hidden
+          mode === "crown" ? styles.visible : styles.hidden
         }`}
       >
         <NeurosityLoginForm
@@ -390,7 +390,7 @@ const WebSocketConfig = () => {
             buttonLabel={copy.neurosity.buttonLabel}
             buttonIcon="pi pi-arrow-right"
             positionbuttonIcon="right"
-            onButtonClick={() => setMode(copy.neurosity.next)}
+            onButtonClick={() => setMode("websocket")}
           />
         </div>
       </div>
