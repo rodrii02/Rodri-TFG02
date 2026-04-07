@@ -86,7 +86,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useContext, useEffect, useMemo, useState } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -100,6 +100,7 @@ import {
 import { Line } from "react-chartjs-2";
 import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
 import "regenerator-runtime/runtime";
+import { LayoutContext } from "@/layout/context/layoutcontext";
 
 ChartJS.register(
   CategoryScale,
@@ -113,19 +114,42 @@ ChartJS.register(
 // Direcciones válidas
 const DIRECTIONS = ["arriba", "abajo", "izquierda", "derecha"] as const;
 type Direction = (typeof DIRECTIONS)[number];
+type ChartThemeColors = {
+  primary: string;
+  text: string;
+  grid: string;
+};
+
+const getChartThemeFallback = (isDarkMode: boolean): ChartThemeColors => isDarkMode
+  ? { primary: "#15548b", text: "#e8eff7", grid: "#1b2a3d" }
+  : { primary: "#003865", text: "#4b5563", grid: "#dee2e6" };
 
 // 🔑 Labels MUTABLES para Chart.js
 const DIRECTION_LABELS: string[] = [...DIRECTIONS];
 
 export default function HorizontalGraphWebSocketPage() {
+  const { layoutConfig } = useContext(LayoutContext);
+  const isDarkMode = layoutConfig.colorScheme === "dark";
   const { lastMessage, isConnected, connectWebSocket } = useUnifiedConnection();
 
   const [points, setPoints] = useState<{ x: number; y: Direction }[]>([]);
-  const [counter, setCounter] = useState(1);
+  const [chartColors, setChartColors] = useState<ChartThemeColors>(() => getChartThemeFallback(isDarkMode));
 
-  const primaryColor = getComputedStyle(document.documentElement)
-    .getPropertyValue("--primary-color")
-    .trim();
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const root = getComputedStyle(document.documentElement);
+
+    startTransition(() => {
+      setChartColors({
+        primary: root.getPropertyValue("--primary-color").trim(),
+        text: root.getPropertyValue("--text-color").trim(),
+        grid: root.getPropertyValue("--surface-border").trim(),
+      });
+    });
+  }, [isDarkMode]);
 
   // 🔌 Conectar WebSocket
   useEffect(() => {
@@ -143,30 +167,31 @@ export default function HorizontalGraphWebSocketPage() {
       const direction = data.marker as Direction;
 
       if (DIRECTIONS.includes(direction)) {
-        setPoints((prev) => [...prev, { x: counter, y: direction }]);
-        setCounter((prev) => prev + 1);
+        startTransition(() => {
+          setPoints((prev) => [...prev, { x: prev.length + 1, y: direction }]);
+        });
       }
     } catch (e) {
       console.error("Error parsing WS message", e);
     }
   }, [lastMessage]);
 
-  const data = {
+  const data = useMemo(() => ({
     datasets: [
       {
         label: "Direcciones",
         data: points,
-        borderColor: primaryColor,
-        backgroundColor: primaryColor,
+        borderColor: chartColors.primary,
+        backgroundColor: chartColors.primary,
         pointRadius: 4,
         tension: 0.2,
         showLine: true,
       },
     ],
-  };
+  }), [chartColors.primary, points]);
 
   // ✅ Tipado correcto
-  const options: ChartOptions<"line"> = {
+  const options: ChartOptions<"line"> = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
 
@@ -176,9 +201,14 @@ export default function HorizontalGraphWebSocketPage() {
         title: {
           display: true,
           text: "Orden de llegada",
+          color: chartColors.text,
         },
         ticks: {
           stepSize: 1,
+          color: chartColors.text,
+        },
+        grid: {
+          color: chartColors.grid,
         },
       },
       y: {
@@ -187,6 +217,13 @@ export default function HorizontalGraphWebSocketPage() {
         title: {
           display: true,
           text: "Dirección",
+          color: chartColors.text,
+        },
+        ticks: {
+          color: chartColors.text,
+        },
+        grid: {
+          color: chartColors.grid,
         },
       },
     },
@@ -195,7 +232,7 @@ export default function HorizontalGraphWebSocketPage() {
         display: false,
       },
     },
-  };
+  }), [chartColors.grid, chartColors.text]);
 
   return (
     <div className="card overflow-y" style={{ height: "calc(100vh - 9rem)" }}>

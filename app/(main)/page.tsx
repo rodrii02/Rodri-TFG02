@@ -9,13 +9,20 @@ import { useMessage } from "@/layout/context/messagecontext";
 import { Checkbox } from "primereact/checkbox";
 import Link from "next/dist/client/link";
 import "regenerator-runtime/runtime";
-import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
+import {
+  useUnifiedConnection,
+  WEBSOCKET_CONNECTION_ERROR,
+  type WebSocketConnectionCheck,
+} from "@/service/UnifiedConnectionService";
+import { WebSocketConnectionFeedback } from "@/service/websocketcontext";
+
+type CssModuleStyles = Record<string, string>;
 
 const BackgroundLayout = ({
   styles,
   children,
 }: {
-  styles: any;
+  styles: CssModuleStyles;
   children: React.ReactNode;
 }) => (
   <div className={styles.page}>
@@ -38,7 +45,7 @@ const VisualPanel = ({
   positionbuttonIcon,
   onButtonClick,
 }: {
-  styles: any;
+  styles: CssModuleStyles;
   title: string;
   description: string;
   buttonLabel: string;
@@ -53,7 +60,9 @@ const VisualPanel = ({
       </label>
     </div>
 
-    <p className="mb-1 md:mb-4 text-center text-200">{description}</p>
+    <p className={`${styles.visualDescription} mb-1 md:mb-4 text-center`}>
+      {description}
+    </p>
 
     <div className="flex justify-content-center">
       <Button
@@ -70,82 +79,74 @@ const VisualPanel = ({
 const WebSocketForm = ({
   webSocketUrl,
   setWebSocketUrl,
-  isConnected,
-  error,
+  connectionCheck,
   onTest,
   onConnect,
 }: {
   webSocketUrl: string;
   setWebSocketUrl: (v: string) => void;
-  isConnected: boolean;
-  error: string | null;
+  connectionCheck: WebSocketConnectionCheck | null;
   onTest: () => void;
   onConnect: () => void;
-}) => (
-  <div className="col-12 p-3 md:col-6 md:p-6 flex align-items-center justify-content-center bg-white border-round-xs">
-    <section className="w-full flex flex-column align-items-center">
-      <div className="w-12 lg:w-9">
-        <div className="w-full surface-card py-3 px-3 md:px-5 md:py-8 shadow-7 border-round-md">
-          <div className="text-center mb-2 md:mb-5">
-            <div className="text-black-alpha-90 text-3xl font-bold mb-3">
-              Configurar WebSocket
-            </div>
-          </div>
+}) => {
+  const canConnect =
+    connectionCheck?.url === webSocketUrl.trim() && connectionCheck.canConnect;
 
-          <div>
-            <label
-              htmlFor="email1"
-              className="block text-900 text-xl font-bold mb-2"
-            >
-              Dirección WebSocket
-            </label>
-            <InputText
-              id="webSocketUrl"
-              value={webSocketUrl}
-              className="w-full"
-              onChange={(e) => setWebSocketUrl(e.target.value)}
-              placeholder="ws://localhost:3000"
+  return (
+    <div
+      className={`col-12 p-3 md:col-6 md:p-6 flex align-items-center justify-content-center border-round-xs ${styles.formColumn}`}
+    >
+      <section className="w-full flex flex-column align-items-center">
+        <div className="w-12 lg:w-9">
+          <div
+            className={`w-full py-3 px-3 md:px-5 md:py-8 shadow-7 border-round-md ${styles.formCard}`}
+          >
+            <div className="text-center mb-2 md:mb-5">
+              <div className={`${styles.cardTitle} text-3xl font-bold mb-3`}>
+                Configurar WebSocket
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="email1"
+                className={`${styles.fieldLabel} block text-xl font-bold mb-2`}
+              >
+                Dirección WebSocket
+              </label>
+              <InputText
+                id="webSocketUrl"
+                value={webSocketUrl}
+                className="w-full"
+                onChange={(e) => setWebSocketUrl(e.target.value)}
+                placeholder="ws://localhost:3000"
+              />
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button
+                label="Probar Conexión"
+                className="p-button-secondary p-button-outlined w-full"
+                onClick={onTest}
+                disabled={webSocketUrl.trim() === ""}
+              />
+              <Button
+                label="Conectar Sesión"
+                className="p-button-primary w-full"
+                onClick={onConnect}
+                disabled={!canConnect}
+              />
+            </div>
+
+            <WebSocketConnectionFeedback
+              result={connectionCheck}
+              currentUrl={webSocketUrl}
             />
           </div>
-          <div className="flex gap-2 mt-3">
-            <Button
-              label="Probar Conexión"
-              className="p-button-secondary p-button-outlined w-full"
-              onClick={onTest}
-              disabled={webSocketUrl.trim() === ""}
-            />
-            <Button
-              label="Conectar Sesión"
-              className="p-button-primary w-full"
-              onClick={onConnect}
-              disabled={!isConnected}
-            />
-          </div>
-
-          {error === "none" && (
-            <div className="mt-2 gap-1 flex align-items-center justify-content-left">
-              <i
-                className="pi pi-check"
-                style={{ fontSize: "1.5rem", color: "var(--green-500)" }}
-              ></i>
-              <p className="text-green-500">Conexión exitosa</p>
-            </div>
-          )}
-
-          {error && error !== "none" && (
-            <div className="mt-2 gap-1 flex align-items-center justify-content-left">
-              <i
-                className="pi pi-times"
-                style={{ fontSize: "1.5rem", color: "var(--red-500)" }}
-              ></i>
-              <p className="text-red-500"> {error}</p>
-            </div>
-          )}
         </div>
-      </div>
-    </section>
-  </div>
-);
+      </section>
+    </div>
+  );
+};
 
 const NeurosityLoginForm = ({
   email,
@@ -155,8 +156,6 @@ const NeurosityLoginForm = ({
   onLogin,
   checked,
   setChecked,
-  isLoading,
-  error,
 }: {
   email: string;
   setEmail: (v: string) => void;
@@ -165,15 +164,17 @@ const NeurosityLoginForm = ({
   onLogin: () => void;
   checked: boolean;
   setChecked: (v: boolean) => void;
-  isLoading?: boolean;
-  error?: string | null;
 }) => (
-  <div className="col-12 p-3 md:col-6 md:p-6 flex align-items-center justify-content-center bg-white border-round-xs flex-order-1 md:flex-order-0">
+  <div
+    className={`col-12 p-3 md:col-6 md:p-6 flex align-items-center justify-content-center border-round-xs flex-order-1 md:flex-order-0 ${styles.formColumn}`}
+  >
     <section className="w-full flex flex-column align-items-center">
       <div className="w-12 lg:w-9">
-        <div className="w-full surface-card py-3 px-3 md:px-5 md:py-8 shadow-7 border-round-md">
+        <div
+          className={`w-full py-3 px-3 md:px-5 md:py-8 shadow-7 border-round-md ${styles.formCard}`}
+        >
           <div className="text-center mb-2 md:mb-5">
-            <div className="text-black-alpha-90 text-3xl font-bold mb-3">
+            <div className={`${styles.cardTitle} text-3xl font-bold mb-3`}>
               LOGIN
             </div>
           </div>
@@ -181,7 +182,7 @@ const NeurosityLoginForm = ({
           <div>
             <label
               htmlFor="email1"
-              className="block text-900 text-xl font-bold mb-2"
+              className={`${styles.fieldLabel} block text-xl font-bold mb-2`}
             >
               Email
             </label>
@@ -197,7 +198,7 @@ const NeurosityLoginForm = ({
 
             <label
               htmlFor="password1"
-              className="block text-900 font-bold text-xl mb-2"
+              className={`${styles.fieldLabel} block font-bold text-xl mb-2`}
             >
               Password
             </label>
@@ -220,7 +221,7 @@ const NeurosityLoginForm = ({
                 />
                 <label
                   htmlFor="rememberme"
-                  className="text-sm font-normal md:text-base md:font-medium"
+                  className={`${styles.helperText} text-sm font-normal md:text-base md:font-medium`}
                 >
                   Remember me
                 </label>
@@ -230,7 +231,7 @@ const NeurosityLoginForm = ({
                 passHref
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-normal md:text-base md:font-medium no-underline ml-2 text-blue-500 text-right cursor-pointer"
+                className={`${styles.helperLink} text-sm font-normal md:text-base md:font-medium no-underline ml-2 text-right cursor-pointer`}
               >
                 Forgot your password?
               </Link>
@@ -271,6 +272,8 @@ const WebSocketConfig = () => {
 
   //Estado para websocket
   const [webSocketUrl, setWebSocketUrl] = useState("");
+  const [webSocketCheck, setWebSocketCheck] =
+    useState<WebSocketConnectionCheck | null>(null);
 
   //Estado para crown
   const [email, setEmail] = useState("");
@@ -281,30 +284,77 @@ const WebSocketConfig = () => {
 
   const [mode, setMode] = useState<"crown" | "websocket">("websocket");
 
-  const {
-    info,
-    error,
-    connectWebSocket,
-    loginCrown,
-    logoutCrown,
-  } = useUnifiedConnection();
+  const { connectWebSocket, testWebSocketConnection, loginCrown } =
+    useUnifiedConnection();
 
-  const handleTestConnection = () => {
+  const updateWebSocketUrl = (nextUrl: string) => {
+    setWebSocketUrl(nextUrl);
+    setWebSocketCheck(null);
+  };
+
+  const validateWebSocketUrl = () => {
+    const nextUrl = webSocketUrl.trim();
+
     if (
-      !webSocketUrl.startsWith("ws://") &&
-      !webSocketUrl.startsWith("wss://")
+      !nextUrl.startsWith("ws://") &&
+      !nextUrl.startsWith("wss://")
     ) {
-      alert("La URL debe comenzar con ws:// o wss://");
+      showMessage({
+        severity: "warn",
+        summary: "URL WebSocket no válida",
+        detail: "La URL debe comenzar con ws:// o wss://",
+        life: 2500,
+      });
+      return null;
+    }
+
+    return nextUrl;
+  };
+
+  const handleTestConnection = async () => {
+    const nextUrl = validateWebSocketUrl();
+    if (!nextUrl) return;
+
+    const result = await testWebSocketConnection(nextUrl);
+    setWebSocketCheck(result);
+    showMessage({
+      severity: result.canConnect ? "success" : "error",
+      summary: result.canConnect
+        ? "Conexión WebSocket correcta"
+        : "Error de WebSocket",
+      detail: result.canConnect ? nextUrl : result.message,
+      life: result.canConnect ? 2000 : 2500,
+    });
+  };
+
+  const handleConnect = async () => {
+    const nextUrl = validateWebSocketUrl();
+
+    if (
+      !nextUrl ||
+      webSocketCheck?.url !== nextUrl ||
+      !webSocketCheck.canConnect
+    ) {
       return;
     }
 
-    connectWebSocket(webSocketUrl);
-  };
-
-  const handleConnect = () => {
-    if (info.stateContext === "online") {
+    const connected = await connectWebSocket(nextUrl);
+    if (connected) {
       router.push("/home");
+      return;
     }
+
+    setWebSocketCheck({
+      url: nextUrl,
+      canConnect: false,
+      message: WEBSOCKET_CONNECTION_ERROR,
+    });
+    showMessage({
+      severity: "error",
+      summary: "Error de WebSocket",
+      detail: WEBSOCKET_CONNECTION_ERROR,
+      life: 2500,
+    });
   };
 
   const login = async (e?: React.MouseEvent | React.FormEvent) => {
@@ -359,9 +409,8 @@ const WebSocketConfig = () => {
 
         <WebSocketForm
           webSocketUrl={webSocketUrl}
-          setWebSocketUrl={setWebSocketUrl}
-          isConnected={!!info && info.stateContext === "online"}
-          error={error}
+          setWebSocketUrl={updateWebSocketUrl}
+          connectionCheck={webSocketCheck}
           onTest={handleTestConnection}
           onConnect={handleConnect}
         />

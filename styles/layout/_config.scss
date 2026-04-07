@@ -51,7 +51,46 @@
             padding-right: 2rem;
         }
     }
-} 
+
+    .layout-config-action {
+        border-radius: 999px;
+    }
+
+    .layout-config-action:focus-visible,
+    .layout-config-theme-button:focus-visible,
+    .layout-config-theme-button.is-active {
+        outline: 0 none;
+        outline-offset: 0;
+        border-radius: 10px;
+        box-shadow: var(--layout-panel-focus-shadow, var(--focus-ring));
+    }
+
+    .layout-config-theme-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+        border-radius: 10px;
+        color: var(--text-color-secondary);
+        transition: box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .layout-config-theme-button:hover {
+        background: var(--surface-hover);
+        color: var(--text-color);
+    }
+
+    .layout-config-theme-button i {
+        font-size: 1.25rem;
+        line-height: 1;
+    }
+
+    .layout-config-theme-button.is-active {
+        color: var(--text-color);
+    }
+}
 
 /* layout.scss */
 

@@ -1,20 +1,32 @@
 "use client";
 
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { startTransition, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Image } from "primereact/image";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Chart } from "primereact/chart";
-import { useInterval } from "primereact/hooks";
 import { classNames } from "primereact/utils";
 import { LayoutContext } from "@/layout/context/layoutcontext";
 import styles from "./index.module.scss";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Toast } from "primereact/toast";
 import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
+type ChartThemeColors = {
+  primary: string;
+  text: string;
+  grid: string;
+};
+
+const getChartThemeFallback = (isDarkMode: boolean): ChartThemeColors => isDarkMode
+  ? { primary: "#15548b", text: "#e8eff7", grid: "#1b2a3d" }
+  : { primary: "#003865", text: "#4b5563", grid: "#dee2e6" };
 
 const ImagePage = () => {
-  const { layoutState } = useContext(LayoutContext);
+  const { layoutConfig, layoutState } = useContext(LayoutContext);
+  const isDarkMode = layoutConfig.colorScheme === "dark";
   const [blurLevel, setBlurLevel] = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [active, setActive] = useState(false);
@@ -23,6 +35,7 @@ const ImagePage = () => {
 
   const blurHistoryRef = useRef<number[]>([]);
   const [blurHistory, setBlurHistory] = useState<number[]>([]);
+  const [chartColors, setChartColors] = useState<ChartThemeColors>(() => getChartThemeFallback(isDarkMode));
 
   const { lastMessage } = useUnifiedConnection();
 
@@ -69,11 +82,13 @@ const ImagePage = () => {
 
     try {
       const data = JSON.parse(lastMessage);
-      if (data.concentracion) {
+      if (typeof data.concentracion === "number") {
         // const value = Math.min(Math.max(data.concentracion, 0), 4); // Clamp 0-4
-        setBlurLevel(data.concentracion);
-        blurHistoryRef.current.push(data.concentracion); // Guardar en ref sin re-render
-        setSeconds((prev) => prev + 1);
+        startTransition(() => {
+          setBlurLevel(data.concentracion);
+          blurHistoryRef.current.push(data.concentracion); // Guardar en ref sin re-render
+          setSeconds((prev) => prev + 1);
+        });
       }
     } catch (error) {
       console.error("❌ Error procesando mensaje WS:", error);
@@ -100,28 +115,61 @@ const ImagePage = () => {
 
   const imageMaxWidth = layoutState.staticMenuDesktopInactive ? "55%" : "70%";
 
-  const chartData = {
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const root = getComputedStyle(document.documentElement);
+
+    startTransition(() => {
+      setChartColors({
+        primary: root.getPropertyValue("--primary-color").trim(),
+        text: root.getPropertyValue("--text-color").trim(),
+        grid: root.getPropertyValue("--surface-border").trim(),
+      });
+    });
+  }, [isDarkMode]);
+
+  const chartData = useMemo(() => ({
     labels: blurHistory.map((_, i) => `S${i + 1}`),
     datasets: [
       {
         label: "Nivel de Desenfoque",
         data: blurHistory,
-        borderColor: "#007ad9",
-        backgroundColor: "#007ad9",
+        borderColor: chartColors.primary,
+        backgroundColor: chartColors.primary,
         fill: false,
         tension: 0.3,
       },
     ],
-  };
+  }), [blurHistory, chartColors.primary]);
 
-  const chartOptions = {
+  const chartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: "#000" } },
+      legend: { labels: { color: chartColors.text } },
     },
     scales: {
-      x: { ticks: { color: "#000" }, grid: { color: "#ddd" } },
-      y: { ticks: { color: "#000" }, grid: { color: "#ddd" } },
+      x: { ticks: { color: chartColors.text }, grid: { color: chartColors.grid } },
+      y: { ticks: { color: chartColors.text }, grid: { color: chartColors.grid } },
     },
+  }), [chartColors.grid, chartColors.text]);
+
+  const exportToExcel = () => {
+    const data = blurHistory.map((value, index) => ({
+      Segundo: `S${index + 1}`,
+      Desenfoque: value,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Imagen");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(blob, "resultados_imagen.xlsx");
   };
 
   return (
@@ -163,13 +211,24 @@ const ImagePage = () => {
       <Dialog
         header="Gráfico de desenfoque"
         visible={visible}
-        style={{ width: "50vw" }}
+        style={{ width: "min(92vw, 900px)" }}
+        breakpoints={{ "960px": "92vw", "641px": "96vw" }}
         onHide={() => {
           if (!visible) return;
           setVisible(false);
         }}
       >
-        <Chart type="line" data={chartData} options={chartOptions} />
+        <div className="flex justify-content-end mb-3">
+          <Button
+            className="bg-primary"
+            label="Exportar a Excel"
+            icon="pi pi-file-excel"
+            onClick={exportToExcel}
+          />
+        </div>
+        <div style={{ width: "100%", height: "min(60vh, 420px)" }}>
+          <Chart type="line" data={chartData} options={chartOptions} style={{ width: "100%", height: "100%" }} />
+        </div>
       </Dialog>
     </div>
   );

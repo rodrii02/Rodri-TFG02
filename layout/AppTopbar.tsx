@@ -14,13 +14,20 @@ import { LayoutContext } from "./context/layoutcontext";
 import { useRouter } from "next/navigation";
 import { useUnifiedConnection } from "@/service/UnifiedConnectionService";
 import { useDeviceDialog } from "@/service/devicecontext";
+import { useWebSocketDialog } from "@/service/websocketcontext";
 
-const AppTopbar = forwardRef<any>((_, ref) => {
-  const { layoutState, onMenuToggle, showProfileSidebar } =
+type AppTopbarRef = {
+  menubutton: HTMLButtonElement | null;
+  topbarmenu: HTMLDivElement | null;
+  topbarmenubutton: HTMLButtonElement | null;
+};
+
+const AppTopbar = forwardRef<AppTopbarRef>((_, ref) => {
+  const { layoutConfig, layoutState, onMenuToggle, showProfileSidebar } =
     useContext(LayoutContext);
-  const menubuttonRef = useRef(null);
-  const topbarmenuRef = useRef(null);
-  const topbarmenubuttonRef = useRef(null);
+  const menubuttonRef = useRef<HTMLButtonElement | null>(null);
+  const topbarmenuRef = useRef<HTMLDivElement | null>(null);
+  const topbarmenubuttonRef = useRef<HTMLButtonElement | null>(null);
 
   const {
     info,
@@ -28,6 +35,7 @@ const AppTopbar = forwardRef<any>((_, ref) => {
     logoutCrown,
   } = useUnifiedConnection();
   const { showDeviceDialog } = useDeviceDialog();
+  const { showWebSocketDialog } = useWebSocketDialog();
 
   const overlayPanelRef = useRef<OverlayPanel>(null); // Referencia para el OverlayPanel
   // const { showDeviceDialog } = useDeviceDialog();
@@ -67,7 +75,14 @@ const AppTopbar = forwardRef<any>((_, ref) => {
   return (
     <div className="layout-topbar">
       <a className="layout-topbar-logo">
-        <img src={`/layout/images/HeaderLogoSF.svg`} alt="logo" />
+        <img
+          src={
+            layoutConfig.colorScheme === "dark"
+              ? "/layout/images/HeaderLogoSF-dark.webp"
+              : "/layout/images/HeaderLogoSF-light.svg"
+          }
+          alt="logo"
+        />
         {/* <span>NEUROAPP</span> */}
       </a>
 
@@ -75,7 +90,12 @@ const AppTopbar = forwardRef<any>((_, ref) => {
       <button
         ref={menubuttonRef}
         type="button"
-        className="p-link layout-menu-button layout-topbar-button"
+        className={classNames("p-link layout-menu-button layout-topbar-button", {
+          "layout-topbar-button-active":
+            layoutState.overlayMenuActive ||
+            layoutState.staticMenuMobileActive ||
+            layoutState.staticMenuDesktopInactive,
+        })}
         onClick={onMenuToggle}
       >
         <i className="pi pi-bars" />
@@ -140,14 +160,18 @@ const AppTopbar = forwardRef<any>((_, ref) => {
           </div>
         </OverlayPanel>
 
-        {info.mode === "crown" && (
+        {(info.mode === "crown" || info.mode === "websocket") && (
           <button
             type="button"
             className="p-link layout-topbar-button"
-            onClick={showDeviceDialog}
+            onClick={info.mode === "crown" ? showDeviceDialog : showWebSocketDialog}
           >
             <i className="pi pi-cog"></i>
-            <span>{info.selectedDeviceContext ?? "Dispositivo"}</span>
+            <span>
+              {info.mode === "crown"
+                ? info.selectedDeviceContext ?? "Dispositivo"
+                : info.selectedDeviceContext ?? "WebSocket"}
+            </span>
           </button>
         )}
 

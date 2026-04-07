@@ -8,6 +8,7 @@ import '../styles/layout/layout.scss';
 import { MessageProvider } from '@/layout/context/messagecontext';
 import { ConnectionProvider } from '@/service/ConnectionContext';
 import { DeviceDialogProvider } from '@/service/devicecontext';
+import { WebSocketDialogProvider } from '@/service/websocketcontext';
 interface RootLayoutProps {
   children: React.ReactNode;
 }
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <LayoutProvider>
             <MessageProvider>
               <ConnectionProvider>
-                <DeviceDialogProvider>{children}</DeviceDialogProvider>
+                <DeviceDialogProvider>
+                  <WebSocketDialogProvider>{children}</WebSocketDialogProvider>
+                </DeviceDialogProvider>
               </ConnectionProvider>
             </MessageProvider>
           </LayoutProvider>

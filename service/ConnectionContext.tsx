@@ -4,6 +4,8 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import 'regenerator-runtime/runtime';
 
 export type ConnectionMode = "crown" | "websocket" | null;
+const CONNECTION_MODE_STORAGE_KEY = 'connectionMode';
+const WEBSOCKET_URL_STORAGE_KEY = 'webSocketUrl';
 
 export interface SharedConnectionData {
   mode: ConnectionMode;
@@ -46,7 +48,7 @@ type NotionLike = {
 
 interface ConnectionInfo extends SharedConnectionData {
   socket: WebSocket | null;
-  connect: (url: string) => void;
+  connect: (url: string) => Promise<boolean>;
   disconnect: () => void;
   setLastSelectedDeviceId: React.Dispatch<React.SetStateAction<string | null>>;
   setSelectedDevice: (device: NotionDevice | null) => void;
@@ -93,6 +95,23 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isDisconnected = useRef(false);
+  const restoredStoredConnection = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || restoredStoredConnection.current) return;
+    restoredStoredConnection.current = true;
+
+    const savedMode = localStorage.getItem(CONNECTION_MODE_STORAGE_KEY);
+    const savedUrl = localStorage.getItem(WEBSOCKET_URL_STORAGE_KEY);
+
+    if (savedMode === 'websocket' && savedUrl) {
+      setMode('websocket');
+      setSelectedDeviceContext(savedUrl);
+      setStateContext('offline');
+      setIsConnected(null);
+      setError(null);
+    }
+  }, []);
 
   const resetWebSocketState = useCallback((nextError: string | null = null) => {
     socketRef.current = null;
@@ -203,57 +222,94 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
     }
 
     resetWebSocketState(null);
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(CONNECTION_MODE_STORAGE_KEY);
+    }
   }, [resetWebSocketState]);
 
   const connect = useCallback(
     (url: string) => {
-      isDisconnected.current = false;
+      return new Promise<boolean>((resolve) => {
+        isDisconnected.current = false;
+        setError(null);
+        setStateContext('connecting');
 
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
+        if (socketRef.current) {
+          socketRef.current.onopen = null;
+          socketRef.current.onmessage = null;
+          socketRef.current.onerror = null;
+          socketRef.current.onclose = null;
+          socketRef.current.close();
+        }
 
-      try {
-        const ws = new WebSocket(url);
-        socketRef.current = ws;
+        let settled = false;
 
-        ws.onopen = () => {
-          setIsConnected(true);
-          setError('none');
+        const settle = (isReady: boolean) => {
+          if (settled) return;
+          settled = true;
+          resolve(isReady);
+        };
+
+        const setWebSocketConnectionError = (message: string) => {
+          socketRef.current = null;
+          setIsConnected(null);
           setMode('websocket');
           setSelectedDeviceContext(url);
-          setStateContext('online');
+          setStateContext('offline');
+          setError(message);
+          settle(false);
         };
 
-        ws.onmessage = (event) => {
-          setLastMessage(event.data);
-        };
+        try {
+          const ws = new WebSocket(url);
+          socketRef.current = ws;
 
-        ws.onerror = () => {
-          if (isDisconnected.current || socketRef.current !== ws) {
-            return;
-          }
+          ws.onopen = () => {
+            setIsConnected(true);
+            setError('none');
+            setMode('websocket');
+            setSelectedDeviceContext(url);
+            setStateContext('online');
 
-          resetWebSocketState('WebSocket connection error');
-        };
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(CONNECTION_MODE_STORAGE_KEY, 'websocket');
+              localStorage.setItem(WEBSOCKET_URL_STORAGE_KEY, url);
+            }
 
-        ws.onclose = () => {
-          if (socketRef.current !== ws) {
-            return;
-          }
+            settle(true);
+          };
 
-          if (isDisconnected.current) {
-            resetWebSocketState(null);
-            return;
-          }
+          ws.onmessage = (event) => {
+            setLastMessage(event.data);
+          };
 
-          resetWebSocketState('WebSocket cerrado inesperadamente');
-        };
-      } catch (errorValue) {
-        const errorMessage = errorValue instanceof Error ? errorValue.message : 'Unknown websocket error';
-        setError(errorMessage);
-        setStateContext('offline');
-      }
+          ws.onerror = () => {
+            if (isDisconnected.current || socketRef.current !== ws) {
+              return;
+            }
+
+            setWebSocketConnectionError('WebSocket connection error');
+          };
+
+          ws.onclose = () => {
+            if (socketRef.current !== ws) {
+              return;
+            }
+
+            if (isDisconnected.current) {
+              resetWebSocketState(null);
+              settle(false);
+              return;
+            }
+
+            setWebSocketConnectionError('WebSocket cerrado inesperadamente');
+          };
+        } catch (errorValue) {
+          const errorMessage = errorValue instanceof Error ? errorValue.message : 'Unknown websocket error';
+          setWebSocketConnectionError(errorMessage);
+        }
+      });
     },
     [resetWebSocketState]
   );

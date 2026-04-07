@@ -25,7 +25,7 @@
             font-size: .857rem;
             text-transform: uppercase;
             font-weight: 700;
-            color: var(--surface-900);
+            color: var(--text-color);
             margin: .75rem 0;
         }
 
@@ -56,14 +56,17 @@
             align-items: center;
             position: relative;
             outline: 0 none;
-            color: var(--text-color);
+            color: var(--text-color-secondary);
             cursor: pointer;
             padding: .75rem 1rem;
+            margin: .18rem 0;
             border-radius: $borderRadius;
-            transition: background-color $transitionDuration, box-shadow $transitionDuration;
+            transition: background-color $transitionDuration, box-shadow $transitionDuration, color $transitionDuration;
+            z-index: 0;
 
             .layout-menuitem-icon {
                 margin-right: .5rem;
+                color: inherit;
             }
 
             .layout-submenu-toggler {
@@ -80,16 +83,33 @@
 
             &.active-route {
                 font-weight: 700;
-                color: var(--primary-color);
+                color: var(--text-color);
+                background-color: var(--surface-hover);
+                box-shadow: var(--layout-panel-focus-shadow, var(--focus-ring));
+                z-index: 2;
             }
 
             &:hover {
+                color: var(--text-color);
                 background-color: var(--surface-hover);
             }
 
             &:focus {
                 @include focused-inset();
             }
+
+            &:focus-visible,
+            &:active {
+                box-shadow: var(--layout-panel-focus-shadow, var(--focus-ring));
+                z-index: 2;
+            }
+        }
+
+        li.active-menuitem > a {
+            color: var(--text-color);
+            background-color: var(--surface-hover);
+            box-shadow: var(--layout-panel-focus-shadow, var(--focus-ring));
+            z-index: 2;
         }
 
         ul {

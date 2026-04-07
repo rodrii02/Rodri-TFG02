@@ -4,10 +4,22 @@ import { useUnifiedConnection } from '@/service/UnifiedConnectionService';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { classNames } from 'primereact/utils';
-import { useEffect, useState } from 'react';
+import { startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { LayoutContext } from '@/layout/context/layoutcontext';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const gridSize = 15; // Tamaño del laberinto (15x15)
 const timeLimit = 60; // Tiempo en segundos
+type DirectionName = 'arriba' | 'abajo' | 'izquierda' | 'derecha';
+type ActionSource = 'Teclado' | 'WebSocket';
+type MazeAction = {
+    paso: number;
+    accion: DirectionName;
+    origen: ActionSource;
+    resultado: 'movido' | 'bloqueado' | 'meta';
+    tiempoRestante: number;
+};
 
 const generateMaze = () => {
     // Crear una cuadrícula llena de paredes
@@ -80,65 +92,93 @@ const isPathAvailable = (maze: number[][]) => {
     return false;
 };
 
+const createValidMaze = () => {
+    let newMaze;
+    do {
+        newMaze = generateMaze();
+    } while (!isPathAvailable(newMaze));
+
+    return newMaze;
+};
+
 const JuegoLaberintoPage = () => {
+    const { layoutConfig } = useContext(LayoutContext);
+    const isDarkMode = layoutConfig.colorScheme === 'dark';
     const [maze, setMaze] = useState<number[][]>([]);
     const [ball, setBall] = useState({ x: 1, y: 1 });
     const [goal] = useState({ x: gridSize - 2, y: gridSize - 2 });
     const [timeLeft, setTimeLeft] = useState(timeLimit);
     const [active, setActive] = useState(false);
-    const [gameOver, setGameOver] = useState(false);
     const [gameWon, setGameWon] = useState(false);
+    const [actionHistory, setActionHistory] = useState<MazeAction[]>([]);
+    const gameOver = timeLeft === 0 && !gameWon;
 
     const { lastMessage } = useUnifiedConnection();
 
-    // 🔹 Generar un laberinto válido
-    useEffect(() => {
-        let newMaze;
-        do {
-            newMaze = generateMaze();
-        } while (!isPathAvailable(newMaze)); // Asegurar que la meta es alcanzable
+    const mazeColors = useMemo(() => {
+        return {
+            border: 'var(--surface-border)',
+            wall: isDarkMode ? '#e8eff7' : '#111827',
+            floor: isDarkMode ? '#030508' : '#f9fafb',
+            start: '#ff1d1d',
+            goal: '#008000',
+        };
+    }, [isDarkMode]);
 
-        setMaze(newMaze);
+    useEffect(() => {
+        startTransition(() => {
+            setMaze(createValidMaze());
+        });
     }, []);
 
     //  Controlar el tiempo
     useEffect(() => {
-        if (active && timeLeft > 0 && !gameOver && !gameWon) {
-            const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+        if (active && timeLeft > 0 && !gameWon) {
+            const timer = setInterval(() => setTimeLeft((prev) => Math.max(prev - 1, 0)), 1000);
             return () => clearInterval(timer);
-        } else if (timeLeft === 0) {
-            setGameOver(true);
         }
-    }, [active, timeLeft, gameOver, gameWon]);
+    }, [active, timeLeft, gameWon]);
 
     //  Mover la bola con las teclas de dirección
-    const moveBall = (dx: number, dy: number) => {
-        setBall((prevBall) => {
-            const newX = prevBall.x + dx;
-            const newY = prevBall.y + dy;
-            console.log("🔵 Moviendo a:", newX, newY, maze[newY]?.[newX]);
-    
-            if (maze[newY]?.[newX] === 0) {
-                if (newX === goal.x && newY === goal.y) {
-                    setGameWon(true);
-                    setActive(false);
-                }
-                return { x: newX, y: newY }; // Devuelve el nuevo estado
-            }
-            return prevBall; // Si no puede moverse, mantiene la posición
-        });
-    };
-    
+    const moveBall = useCallback((dx: number, dy: number, direction: DirectionName, source: ActionSource) => {
+        if (!maze.length) return;
 
-    const moveBallFromMessage = (direction: string) => {
-        
-        if(active && !gameOver && !gameWon){
-            if (direction === "arriba") moveBall(0, -1);
-            if (direction === "abajo") moveBall(0, 1);
-            if (direction === "izquierda") moveBall(-1, 0);
-            if (direction === "derecha") moveBall(1, 0);
+        const newX = ball.x + dx;
+        const newY = ball.y + dy;
+        const canMove = maze[newY]?.[newX] === 0;
+        const reachesGoal = canMove && newX === goal.x && newY === goal.y;
+
+        setActionHistory((prev) => ([
+            ...prev,
+            {
+                paso: prev.length + 1,
+                accion: direction,
+                origen: source,
+                resultado: reachesGoal ? 'meta' : canMove ? 'movido' : 'bloqueado',
+                tiempoRestante: timeLeft,
+            }
+        ]));
+
+        if (!canMove) return;
+
+        setBall({ x: newX, y: newY });
+
+        if (reachesGoal) {
+            setGameWon(true);
+            setActive(false);
         }
-    };
+    }, [ball.x, ball.y, goal.x, goal.y, maze, timeLeft]);
+
+    const moveBallFromMessage = useCallback((direction: string) => {
+        if (!active || gameOver || gameWon) return;
+
+        startTransition(() => {
+            if (direction === 'arriba') moveBall(0, -1, 'arriba', 'WebSocket');
+            if (direction === 'abajo') moveBall(0, 1, 'abajo', 'WebSocket');
+            if (direction === 'izquierda') moveBall(-1, 0, 'izquierda', 'WebSocket');
+            if (direction === 'derecha') moveBall(1, 0, 'derecha', 'WebSocket');
+        });
+    }, [active, gameOver, gameWon, moveBall]);
 
     // useEffect(() => {
     //     const ws = new WebSocket("ws://localhost:8008/ws");
@@ -166,52 +206,118 @@ const JuegoLaberintoPage = () => {
         try {
           const message = JSON.parse(lastMessage);
           if (message.marker) {
-            console.log("📡 WebSocket recibió:", message.marker);
             moveBallFromMessage(message.marker);
           }
-        } catch (e) {
+        } catch {
           console.error("❌ Error parsing message:", lastMessage);
         }
-      }, [lastMessage, active, gameOver, gameWon]); 
+      }, [lastMessage, active, gameOver, gameWon, moveBallFromMessage]);
 
     //  Detectar teclas de movimiento
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (active && !gameOver && !gameWon) {
-                console.log("🔵 Tecla presionada:", ball);
-                if (e.key === 'ArrowUp') moveBall(0, -1);
-                if (e.key === 'ArrowDown') moveBall(0, 1);
-                if (e.key === 'ArrowLeft') moveBall(-1, 0);
-                if (e.key === 'ArrowRight') moveBall(1, 0);
+                if (e.key === 'ArrowUp') moveBall(0, -1, 'arriba', 'Teclado');
+                if (e.key === 'ArrowDown') moveBall(0, 1, 'abajo', 'Teclado');
+                if (e.key === 'ArrowLeft') moveBall(-1, 0, 'izquierda', 'Teclado');
+                if (e.key === 'ArrowRight') moveBall(1, 0, 'derecha', 'Teclado');
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [ball, active, gameOver, gameWon]);
+    }, [active, gameOver, gameWon, moveBall]);
 
     //  Reiniciar el juego
     const resetGame = () => {
-        let newMaze;
-        do {
-            newMaze = generateMaze();
-        } while (!isPathAvailable(newMaze));
-
-        setMaze(newMaze);
+        setMaze(createValidMaze());
         setBall({ x: 1, y: 1 });
         setTimeLeft(timeLimit);
-        setGameOver(false);
         setGameWon(false);
         setActive(false);
+        setActionHistory([]);
     };
 
 
     const againGame = () => {
         setBall({ x: 1, y: 1 });
         setTimeLeft(timeLimit);
-        setGameOver(false);
         setGameWon(false);
         setActive(false);
+        setActionHistory([]);
     };
+
+    const exportToExcel = () => {
+        const data = actionHistory.map((action) => ({
+            Paso: action.paso,
+            Accion: action.accion,
+            Origen: action.origen,
+            Resultado: action.resultado,
+            TiempoRestante: action.tiempoRestante,
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Laberinto');
+
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+        saveAs(blob, 'resultados_laberinto.xlsx');
+    };
+
+    const renderActionResults = () => (
+        <div className="flex flex-column gap-3" style={{ width: '100%' }}>
+            <div className="flex justify-content-end">
+                <Button
+                    className="bg-primary"
+                    label="Exportar a Excel"
+                    icon="pi pi-file-excel"
+                    onClick={exportToExcel}
+                    disabled={actionHistory.length === 0}
+                />
+            </div>
+            <div className="overflow-auto" style={{ maxHeight: 'min(55vh, 360px)' }}>
+                <table className="w-full" style={{ borderCollapse: 'collapse', color: 'var(--text-color)' }}>
+                    <thead>
+                        <tr>
+                            <th className="text-left p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>Paso</th>
+                            <th className="text-left p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>Acción</th>
+                            <th className="text-left p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>Origen</th>
+                            <th className="text-left p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>Resultado</th>
+                            <th className="text-left p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>Tiempo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {actionHistory.length === 0 ? (
+                            <tr>
+                                <td className="p-2" colSpan={5}>No hay acciones registradas.</td>
+                            </tr>
+                        ) : actionHistory.map((action) => (
+                            <tr key={action.paso}>
+                                <td className="p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>{action.paso}</td>
+                                <td className="p-2 capitalize" style={{ borderBottom: '1px solid var(--surface-border)' }}>{action.accion}</td>
+                                <td className="p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>{action.origen}</td>
+                                <td className="p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>{action.resultado}</td>
+                                <td className="p-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>{action.tiempoRestante}s</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    const mazeCells = useMemo(() => {
+        return maze.map((row, y) => row.map((cell, x) => (
+            <div key={`${x}-${y}`} style={{
+                position: 'absolute',
+                left: `${(x / gridSize) * 100}%`,
+                top: `${(y / gridSize) * 100}%`,
+                width: `${100 / gridSize}%`,
+                height: `${100 / gridSize}%`,
+                backgroundColor: cell === 1 ? mazeColors.wall : 'transparent'
+            }} />
+        )));
+    }, [maze, mazeColors.wall]);
 
     return (
         <div className="card overflow-y" style={{ height: 'calc(100vh - 9rem)' }}>
@@ -221,27 +327,18 @@ const JuegoLaberintoPage = () => {
                     position: 'relative',
                     width: 'min(90vw, 500px)', //  Máximo 500px, pero se ajusta hasta el 90% del ancho de la pantalla
                     height: 'min(90vw, 500px)',
-                    border: '5px solid black',
-                    background: '#eee',
+                    border: `5px solid ${mazeColors.border}`,
+                    background: mazeColors.floor,
                     display: 'flex',
                     flexWrap: 'wrap'
                 }}>
-                    {maze.map((row, y) => row.map((cell, x) => (
-                        <div key={`${x}-${y}`} style={{
-                            position: 'absolute',
-                            left: `${(x / gridSize) * 100}%`, //  Proporcional al tamaño del grid
-                            top: `${(y / gridSize) * 100}%`,
-                            width: `${100 / gridSize}%`,
-                            height: `${100 / gridSize}%`,
-                            backgroundColor: cell === 1 ? 'black' : 'transparent'
-                        }} />
-                    )))}
+                    {mazeCells}
 
                     {/* Bola */}
                     <div style={{
                         width: `${(100 / gridSize) - 2}%`,
                         height: `${(100 / gridSize) - 2}%`,
-                        backgroundColor: 'red',
+                        backgroundColor: mazeColors.start,
                         borderRadius: '50%',
                         position: 'absolute',
                         left: `${(ball.x / gridSize) * 100 + 1}%`,
@@ -253,7 +350,7 @@ const JuegoLaberintoPage = () => {
                     <div style={{
                         width: `${100 / gridSize}%`,
                         height: `${100 / gridSize}%`,
-                        backgroundColor: 'green',
+                        backgroundColor: mazeColors.goal,
                         position: 'absolute',
                         left: `${(goal.x / gridSize) * 100}%`,
                         top: `${(goal.y / gridSize) * 100}%`
@@ -271,16 +368,18 @@ const JuegoLaberintoPage = () => {
                 </div>
             </div>
 
-            <Dialog header="¡Tiempo agotado!" visible={gameOver} style={{ width: '25vw' }} onHide={resetGame}>
+            <Dialog header="¡Tiempo agotado!" visible={gameOver} style={{ width: 'min(92vw, 900px)' }} breakpoints={{ '960px': '92vw', '641px': '96vw' }} onHide={resetGame}>
                 <div className='flex flex-column align-items-center'>
                     <p>¡No lograste llegar a la meta a tiempo!</p>
+                    {renderActionResults()}
                     <Button label="Reintentar" icon="pi pi-refresh" onClick={againGame} />
                 </div>
             </Dialog>
 
-            <Dialog header="¡Ganaste!" visible={gameWon} style={{ width: '25vw' }} onHide={resetGame}>
+            <Dialog header="¡Ganaste!" visible={gameWon} style={{ width: 'min(92vw, 900px)' }} breakpoints={{ '960px': '92vw', '641px': '96vw' }} onHide={resetGame}>
                 <div className='flex flex-column align-items-center'>
                     <p>¡Lograste escapar del laberinto en {timeLimit - timeLeft} segundos!</p>
+                    {renderActionResults()}
                     <Button label="Jugar de nuevo" icon="pi pi-play" onClick={resetGame} />
                 </div>
             </Dialog>

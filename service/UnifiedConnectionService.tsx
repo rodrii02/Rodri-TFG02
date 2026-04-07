@@ -23,11 +23,21 @@ type CrownClient = {
   ) => Promise<unknown>;
 };
 
+export const WEBSOCKET_CONNECTION_ERROR =
+  "Error de conexion con el servidor";
+
+export type WebSocketConnectionCheck = {
+  url: string;
+  canConnect: boolean;
+  message: string;
+};
+
 export interface UnifiedConnectionService extends SharedConnectionData {
   info: SharedConnectionData;
   socket: WebSocket | null;
   notionClient: unknown | null;
-  connectWebSocket: (url: string) => Promise<void>;
+  connectWebSocket: (url: string) => Promise<boolean>;
+  testWebSocketConnection: (url: string) => Promise<WebSocketConnectionCheck>;
   disconnectWebSocket: () => void;
   sendWebSocketMessage: (message: string) => void;
   loginCrown: (email: string, password: string) => Promise<void>;
@@ -82,13 +92,61 @@ export const useUnifiedConnection = (): UnifiedConnectionService => {
   const connectWebSocket = useCallback(
     async (url: string) => {
       if (shared.mode === "crown") {
-        await logoutNotion();
+        try {
+          await logoutNotion();
+        } catch (error) {
+          console.error("Error closing Crown session before WebSocket", error);
+        }
       }
 
-      connect(url);
+      return connect(url);
     },
     [connect, logoutNotion, shared.mode]
   );
+
+  const testWebSocketConnection = useCallback((url: string) => {
+    return new Promise<WebSocketConnectionCheck>((resolve) => {
+      let socket: WebSocket | null = null;
+      let settled = false;
+
+      const finish = (canConnect: boolean) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        socket?.close();
+        resolve({
+          url,
+          canConnect,
+          message: canConnect
+            ? "Conexión exitosa"
+            : WEBSOCKET_CONNECTION_ERROR,
+        });
+      };
+
+      const timeout = window.setTimeout(() => {
+        finish(false);
+      }, 5000);
+
+      try {
+        socket = new WebSocket(url);
+
+        socket.onopen = () => {
+          finish(true);
+        };
+
+        socket.onerror = () => {
+          finish(false);
+        };
+
+        socket.onclose = () => {
+          finish(false);
+        };
+      } catch (errorValue) {
+        console.error("Error testing WebSocket connection", errorValue);
+        finish(false);
+      }
+    });
+  }, []);
 
   const disconnectWebSocket = useCallback(() => {
     disconnect();
@@ -152,6 +210,7 @@ export const useUnifiedConnection = (): UnifiedConnectionService => {
     socket,
     notionClient,
     connectWebSocket,
+    testWebSocketConnection,
     disconnectWebSocket,
     sendWebSocketMessage,
     loginCrown,

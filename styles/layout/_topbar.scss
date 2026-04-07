@@ -52,6 +52,12 @@
             @include focused();
         }
 
+        &:focus-visible,
+        &:active,
+        &.layout-topbar-button-active {
+            box-shadow: var(--layout-panel-focus-shadow, var(--focus-ring));
+        }
+
         i {
             font-size: 1.5rem;
         }

@@ -16,6 +16,47 @@
   height: 100vh;
 }
 
+.formColumn {
+  background: var(--surface-section);
+}
+
+.formCard {
+  background: var(--surface-card);
+  color: var(--text-color);
+}
+
+.cardTitle {
+  color: var(--text-color);
+}
+
+.fieldLabel {
+  color: var(--text-color);
+}
+
+.helperText {
+  color: var(--text-color);
+}
+
+.helperLink {
+  color: var(--primary-color);
+}
+
+.helperLink:hover {
+  color: var(--second-color);
+}
+
+.visualDescription {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+:global(html[data-color-scheme="dark"]) .formColumn {
+  background: var(--surface-card);
+}
+
+:global(html[data-color-scheme="dark"]) .formCard {
+  background: var(--surface-ground);
+}
+
 .bgVideo {
   width: 100%;
   height: 100%;

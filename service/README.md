@@ -5,12 +5,14 @@ Este directorio se ha reducido al minimo util. La idea ahora es muy simple:
 - `ConnectionContext.tsx` mantiene el estado real
 - `UnifiedConnectionService.tsx` expone una API comun para la app
 - `devicecontext.tsx` resuelve el selector de dispositivos
+- `websocketcontext.tsx` resuelve el dialogo de configuracion WebSocket
 
 ## Archivos que quedan
 
 - `ConnectionContext.tsx`
 - `UnifiedConnectionService.tsx`
 - `devicecontext.tsx`
+- `websocketcontext.tsx`
 - `README.md`
 
 ## Que se elimino
@@ -97,6 +99,7 @@ Expone:
 
 - `info`
 - `connectWebSocket(url)`
+- `testWebSocketConnection(url)`
 - `disconnectWebSocket()`
 - `sendWebSocketMessage(message)`
 - `loginCrown(email, password)`
@@ -148,6 +151,29 @@ Antes dependia de una capa `useNotion()`. Ahora usa `useUnifiedConnection()` dir
 
 Porque es estado de UI, no estado de conexion. Meterlo dentro del contexto principal haria el nucleo mas grande y mas acoplado a PrimeReact.
 
+## 4. `websocketcontext.tsx`
+
+Mantiene el dialogo de configuracion WebSocket del topbar.
+
+### Que hace
+
+- abre el modal de configuracion
+- precarga la ultima URL usada desde `localStorage`
+- valida que la URL empiece por `ws://` o `wss://`
+- permite probar la URL con `testWebSocketConnection(url)` sin guardar nada
+- conecta la sesion real con `connectWebSocket(url)`, que es cuando se guarda el modo WebSocket
+- muestra el mismo feedback de exito/error que el login con `WebSocketConnectionFeedback`
+
+### Diferencia entre probar y conectar
+
+`testWebSocketConnection(url)` usa un socket temporal y devuelve un resultado simple: `{ url, canConnect, message }`. No cambia el modo, no guarda la URL y no toca `localStorage`.
+
+`connectWebSocket(url)` abre la sesion real y devuelve `true` o `false`, sin lanzar excepciones de WebSocket a la UI. Si conecta bien, `error` queda como `"none"` y entonces se guarda `connectionMode = "websocket"` y `webSocketUrl = url` en `localStorage`.
+
+### Por que se deja separado
+
+Por el mismo motivo que `devicecontext.tsx`: es estado de UI. El contexto principal mantiene la conexion real, y este archivo solo controla el dialogo que permite editar la URL desde el topbar.
+
 ## Cambios fuera de `service`
 
 ### `app/layout.tsx`
@@ -158,7 +184,9 @@ Ahora usa `ConnectionProvider` directamente:
 
 ```tsx
 <ConnectionProvider>
-  <DeviceDialogProvider>{children}</DeviceDialogProvider>
+  <DeviceDialogProvider>
+    <WebSocketDialogProvider>{children}</WebSocketDialogProvider>
+  </DeviceDialogProvider>
 </ConnectionProvider>
 ```
 
@@ -202,6 +230,7 @@ La regla recomendable es:
 
 - si necesitas conexion, usa `useUnifiedConnection()`
 - si necesitas solo UI del selector de dispositivo, usa `useDeviceDialog()`
+- si necesitas solo UI del dialogo WebSocket, usa `useWebSocketDialog()`
 - si necesitas el provider global, usa `ConnectionProvider`
 
 ### Ejemplo
@@ -213,6 +242,7 @@ export function Example() {
   const {
     info,
     connectWebSocket,
+    testWebSocketConnection,
     loginCrown,
     logoutCrown,
     sendWebSocketMessage,
@@ -222,6 +252,15 @@ export function Example() {
     <div>
       <p>Modo: {info.mode ?? "none"}</p>
       <p>Estado: {info.stateContext ?? "offline"}</p>
+
+      <button
+        onClick={async () => {
+          const result = await testWebSocketConnection("ws://localhost:8001/ws");
+          console.log(result.canConnect, result.message);
+        }}
+      >
+        Probar WS
+      </button>
 
       <button onClick={() => connectWebSocket("ws://localhost:8001/ws")}>
         Conectar WS
@@ -249,6 +288,6 @@ La carpeta ha pasado de varias capas duplicadas a solo:
 
 - un contexto real
 - una fachada publica
-- una pieza de UI auxiliar
+- dos piezas de UI auxiliares para Crown y WebSocket
 
 Eso hace el sistema mas facil de mantener y mas claro de entender.

@@ -59,6 +59,10 @@ const AppConfig = (props: AppConfigProps) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [layoutConfig.scale]);
 
+    useEffect(() => {
+        document.documentElement.setAttribute('data-color-scheme', layoutConfig.colorScheme);
+    }, [layoutConfig.colorScheme]);
+
     return (
         <>
             <button className="layout-config-button config-link" type="button" onClick={onConfigButtonClick}>
@@ -70,26 +74,40 @@ const AppConfig = (props: AppConfigProps) => {
                     <>
                         <h5>Scale</h5>
                         <div className="flex align-items-center">
-                            <Button icon="pi pi-minus" type="button" onClick={decrementScale} rounded text className="w-2rem h-2rem mr-2" disabled={layoutConfig.scale === scales[0]}></Button>
+                            <Button icon="pi pi-minus" type="button" onClick={decrementScale} rounded text className="layout-config-action w-2rem h-2rem mr-2" disabled={layoutConfig.scale === scales[0]}></Button>
                             <div className="flex gap-2 align-items-center">
                                 {scales.map((item) => {
                                     return <i className={classNames('pi pi-circle-fill', { 'text-primary-color': item === layoutConfig.scale, 'text-300': item !== layoutConfig.scale })} key={item}></i>;
                                 })}
                             </div>
-                            <Button icon="pi pi-plus" type="button" onClick={incrementScale} rounded text className="w-2rem h-2rem ml-2" disabled={layoutConfig.scale === scales[scales.length - 1]}></Button>
+                            <Button icon="pi pi-plus" type="button" onClick={incrementScale} rounded text className="layout-config-action w-2rem h-2rem ml-2" disabled={layoutConfig.scale === scales[scales.length - 1]}></Button>
                         </div>
                     </>
                 )}
                 <h5>Mode</h5>
                 <div className="grid">
                     <div className="col-3">
-                        <button className="p-link w-2rem h-2rem" onClick={() => _changeTheme('lara-light-blue', 'light')}>
-                            <img src="/layout/images/themes/lara-light-blue.png" className="w-2rem h-2rem" alt="Lara Light Blue" />
+                        <button
+                            className={classNames('p-link layout-config-theme-button', {
+                                'is-active': layoutConfig.colorScheme === 'light'
+                            })}
+                            onClick={() => _changeTheme('lara-light-blue', 'light')}
+                            aria-label="Activar modo claro"
+                            type="button"
+                        >
+                            <i className="pi pi-sun" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div className="col-3">
-                        <button className="p-link w-2rem h-2rem" onClick={() => _changeTheme('lara-dark-blue', 'dark')}>
-                            <img src="/layout/images/themes/lara-dark-blue.png" className="w-2rem h-2rem" alt="Lara Dark Blue" />
+                        <button
+                            className={classNames('p-link layout-config-theme-button', {
+                                'is-active': layoutConfig.colorScheme === 'dark'
+                            })}
+                            onClick={() => _changeTheme('lara-dark-blue', 'dark')}
+                            aria-label="Activar modo oscuro"
+                            type="button"
+                        >
+                            <i className="pi pi-moon" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>

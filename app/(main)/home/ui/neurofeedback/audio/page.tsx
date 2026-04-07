@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useWavesurfer } from '@wavesurfer/react';
 import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.js';
 import { Button } from 'primereact/button';
@@ -12,10 +12,38 @@ import { Toast } from 'primereact/toast';
 import { Chart } from 'primereact/chart';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { LayoutContext } from '@/layout/context/layoutcontext';
 
 const audioUrls = ['/layout/audio/OneRepublic_I_Aint_Worried.mp3'];
+type RgbColor = { r: number; g: number; b: number };
+type AudioThemeColors = {
+  primary: string;
+  second: string;
+  text: string;
+  grid: string;
+  canvas: string;
+  wave: string;
+};
+
+const getAudioThemeFallback = (isDarkMode: boolean): AudioThemeColors => isDarkMode ? {
+  primary: '#15548b',
+  second: '#2c6fa8',
+  text: '#e8eff7',
+  grid: '#1b2a3d',
+  canvas: '#0c1420',
+  wave: '#ffffff',
+} : {
+  primary: '#003865',
+  second: '#1b5a8c',
+  text: '#4b5563',
+  grid: '#dee2e6',
+  canvas: '#ffffff',
+  wave: '#003865',
+};
 
 const Audiopage = () => {
+  const { layoutConfig } = useContext(LayoutContext);
+  const isDarkMode = layoutConfig.colorScheme === 'dark';
   const [noiseHistory, setNoiseHistory] = useState<number[]>([]); // 📌 Guarda los valores de ruido
   const noiseHistoryRef = useRef<number[]>([]); // 📌 useRef para almacenar valores sin re-renderizar
   const toast = useRef<Toast>(null);
@@ -41,27 +69,47 @@ const Audiopage = () => {
 
 
   const op = useRef<OverlayPanel>(null);
-  const [colorRuido] = useState({ r: 151, g: 18, b: 47 });
+  const [colorRuido] = useState<RgbColor>({ r: 151, g: 18, b: 47 });
+  const [themeColors, setThemeColors] = useState<AudioThemeColors>(() => getAudioThemeFallback(isDarkMode));
 
-  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
-  const secondColor = getComputedStyle(document.documentElement).getPropertyValue('--second-color').trim();
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const root = getComputedStyle(document.documentElement);
+
+    startTransition(() => {
+      setThemeColors({
+        primary: root.getPropertyValue('--primary-color').trim(),
+        second: root.getPropertyValue('--second-color').trim(),
+        text: root.getPropertyValue('--text-color').trim(),
+        grid: root.getPropertyValue('--surface-border').trim(),
+        canvas: root.getPropertyValue('--surface-card').trim(),
+        wave: isDarkMode ? '#ffffff' : root.getPropertyValue('--primary-color').trim(),
+      });
+    });
+  }, [isDarkMode]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [addNoise, setAddNoise] = useState(false);
-  const [noiseLevel, setNoiseLevel] = useState(0.5);
+  const noiseLevelRef = useRef(0.5);
 
-  const rgbToString = (color: any, alpha = 0.8) => `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+  const rgbToString = (color: RgbColor, alpha = 0.8) => `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
 
   // Inicializamos Wavesurfer con las configuraciones necesarias
   const { wavesurfer } = useWavesurfer({
     container: containerRef,
     height: 150,
-    waveColor: secondColor,
-    progressColor: primaryColor,
+    waveColor: themeColors.second,
+    progressColor: themeColors.primary,
     url: audioUrls[0],
-    plugins: useMemo(() => [TimelinePlugin.create()], []),
+    plugins: useMemo(() => {
+      if (typeof document === 'undefined') return [];
+      return [TimelinePlugin.create()];
+    }, []),
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -107,14 +155,14 @@ const Audiopage = () => {
       noiseSourceRef.current.disconnect();
     }
 
-    noiseGainRef.current!.gain.value = noiseLevel;
+    noiseGainRef.current!.gain.value = noiseLevelRef.current;
 
     const bufferSize = audioContext.sampleRate * 2;
     const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
     const output = noiseBuffer.getChannelData(0);
 
     for (let i = 0; i < bufferSize; i++) {
-      output[i] = (Math.random() * 2 - 1) * noiseLevel;
+      output[i] = (Math.random() * 2 - 1) * noiseLevelRef.current;
     }
 
     const noiseSource = audioContext.createBufferSource();
@@ -146,11 +194,12 @@ const Audiopage = () => {
     const bufferLength = analyserAudioRef.current.frequencyBinCount;
     const dataArrayAudio = new Uint8Array(bufferLength);
     const noiseDataArray = new Uint8Array(bufferLength);
+    let animationFrameId: number;
 
     const draw = () => {
-      requestAnimationFrame(draw);
+      animationFrameId = requestAnimationFrame(draw);
 
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = themeColors.canvas;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const sliceWidth = canvas.width / bufferLength;
@@ -159,7 +208,7 @@ const Audiopage = () => {
       // 🔹 Dibujar la onda de la canción
       analyserAudioRef.current!.getByteTimeDomainData(dataArrayAudio);
       ctx.lineWidth = 2;
-      ctx.strokeStyle = primaryColor;
+      ctx.strokeStyle = themeColors.wave;
       ctx.beginPath();
 
       for (let i = 0; i < bufferLength; i++) {
@@ -200,7 +249,9 @@ const Audiopage = () => {
     };
 
     draw();
-  }, [addNoise, noiseLevel]);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [addNoise, colorRuido, themeColors.canvas, themeColors.wave]);
 
   const togglePlay = () => {
     if (!wavesurfer) return;
@@ -234,17 +285,16 @@ const Audiopage = () => {
 
     const interval = setInterval(() => {
       const newNoiseLevel = Math.random() * (0.5 - 0.01) + 0.01; // Rango entre 0.01 y 0.5
-      setNoiseLevel(newNoiseLevel);
+      noiseLevelRef.current = newNoiseLevel;
       noiseGainRef.current!.gain.setValueAtTime(newNoiseLevel, audioContextRef.current!.currentTime);
-      console.log('Nivel de ruido:', newNoiseLevel);
       noiseHistoryRef.current.push(newNoiseLevel);
 
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [addNoise, visible]);
+  }, [addNoise]);
 
-  const chartData = {
+  const chartData = useMemo(() => ({
     labels: noiseHistory.map((_, i) => `S ${i + 1}`),
     datasets: [
       {
@@ -256,18 +306,20 @@ const Audiopage = () => {
         tension: 0.4,
       },
     ],
-  };
+  }), [noiseHistory]);
 
   // 📊 **Opciones de la gráfica**
-  const chartOptions = {
+  const chartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: '#000' } },
+      legend: { labels: { color: themeColors.text } },
     },
     scales: {
-      x: { ticks: { color: '#000' }, grid: { color: '#ddd' } },
-      y: { ticks: { color: '#000' }, grid: { color: '#ddd' } },
+      x: { ticks: { color: themeColors.text }, grid: { color: themeColors.grid } },
+      y: { ticks: { color: themeColors.text }, grid: { color: themeColors.grid } },
     },
-  };
+  }), [themeColors.grid, themeColors.text]);
 
   const exportToExcel = () => {
     const data = noiseHistory.map((value, index) => ({
@@ -303,19 +355,19 @@ const Audiopage = () => {
               <label>Este es el color del ruido</label>
             </div>
             <div className='flex align-items-center gap-2'>
-              <ColorPicker format="hex" value={primaryColor}/>
+              <ColorPicker format="hex" value={themeColors.wave}/>
               <label>Este es el color de la canción</label>
             </div>
         </OverlayPanel>
       </div>
-      <canvas ref={canvasRef} style={{ marginBottom: '1em', border: '2px solid var(--primary-color)', width: '50%', borderRadius: '5px', height: '200px'}} />
+      <canvas ref={canvasRef} style={{ marginBottom: '1em', border: '2px solid var(--primary-color)', width: '50%', borderRadius: '5px', height: '200px', background: 'var(--surface-card)' }} />
 
       <div className="flex gap-2">
         <Button onClick={togglePlay}>{isPlaying ? 'Stop' : 'Play'}</Button>
       </div>
       <Toast ref={toast} />
       <ConfirmDialog />
-      <Dialog header="GRAFICO DE RUIDO" visible={visible} style={{ width: '50vw' }} onHide={() => {if (!visible) return; setVisible(false); }}>
+      <Dialog header="GRAFICO DE RUIDO" visible={visible} style={{ width: 'min(92vw, 900px)' }} breakpoints={{ '960px': '92vw', '641px': '96vw' }} onHide={() => {if (!visible) return; setVisible(false); }}>
         <div className="flex justify-content-end mt-3">
           <Button
             className='bg-primary'
@@ -324,7 +376,9 @@ const Audiopage = () => {
             onClick={exportToExcel}
           />
         </div>
-        <Chart type="line" data={chartData} options={chartOptions}></Chart>
+        <div style={{ width: '100%', height: 'min(60vh, 420px)' }}>
+          <Chart type="line" data={chartData} options={chartOptions} style={{ width: '100%', height: '100%' }} />
+        </div>
 
       </Dialog>
     </div>
